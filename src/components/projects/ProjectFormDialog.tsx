@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -43,18 +43,42 @@ export function ProjectFormDialog({
 }: ProjectFormDialogProps) {
     const isEditing = !!project;
     const [form, setForm] = useState<ProjectFormData>({
-        name: project?.name || '',
-        entity_id: project?.entity_id || '',
-        start_date: project?.start_date || '',
-        end_date: project?.end_date || '',
-        status: project?.status || 'active',
+        name: '',
+        entity_id: '',
+        start_date: '',
+        end_date: '',
+        status: 'active',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    useEffect(() => {
+        if (open) {
+            setForm({
+                name: project?.name || '',
+                entity_id: project?.entity_id || '',
+                start_date: project?.start_date || '',
+                end_date: project?.end_date || '',
+                status: project?.status || 'active',
+            });
+            setErrors({});
+        }
+    }, [open, project]);
+
+    const handleFieldChange = (field: keyof ProjectFormData, value: any) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+    };
+
     const validate = () => {
         const newErrors: Record<string, string> = {};
-        if (!form.name || form.name.length < 2) {
-            newErrors.name = 'Name must be at least 2 characters';
+        if (!form.name || form.name.trim().length === 0) {
+            newErrors.name = 'Name is required';
         }
         if (!form.entity_id) {
             newErrors.entity_id = 'Please select an entity';
@@ -95,7 +119,7 @@ export function ProjectFormDialog({
                             id="name"
                             placeholder="Project Alpha"
                             value={form.name}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                            onChange={(e) => handleFieldChange('name', e.target.value)}
                         />
                         {errors.name && (
                             <p className="text-sm text-red-500">{errors.name}</p>
@@ -107,7 +131,7 @@ export function ProjectFormDialog({
                             <label className="text-sm font-medium">Entity</label>
                             <Select
                                 value={form.entity_id}
-                                onValueChange={(val) => setForm({ ...form, entity_id: val })}
+                                onValueChange={(val) => handleFieldChange('entity_id', val)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select entity" />

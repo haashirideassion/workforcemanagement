@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -43,18 +43,43 @@ export function EmployeeFormDialog({
 }: EmployeeFormDialogProps) {
     const isEditing = !!employee;
     const [form, setForm] = useState<EmployeeFormData>({
-        name: employee?.name || '',
-        email: employee?.email || '',
-        entity_id: employee?.entity_id || '',
-        employment_type: employee?.employment_type || 'permanent',
-        performance_score: employee?.performance_score || null,
+        name: '',
+        email: '',
+        entity_id: '',
+        employment_type: 'permanent',
+        performance_score: null,
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    useEffect(() => {
+        if (open) {
+            setForm({
+                name: employee?.name || '',
+                email: employee?.email || '',
+                entity_id: employee?.entity_id || '',
+                employment_type: employee?.employment_type || 'permanent',
+                performance_score: employee?.performance_score || null,
+            });
+            setErrors({});
+        }
+    }, [open, employee]);
+
+    const handleFieldChange = (field: keyof EmployeeFormData, value: any) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+        // Clear error as soon as user starts typing/selecting
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+    };
+
     const validate = () => {
         const newErrors: Record<string, string> = {};
-        if (!form.name || form.name.length < 2) {
-            newErrors.name = 'Name must be at least 2 characters';
+        if (!form.name || form.name.trim().length === 0) {
+            newErrors.name = 'Name is required';
         }
         if (!form.email || !form.email.includes('@')) {
             newErrors.email = 'Invalid email address';
@@ -98,7 +123,7 @@ export function EmployeeFormDialog({
                             id="name"
                             placeholder="John Doe"
                             value={form.name}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                            onChange={(e) => handleFieldChange('name', e.target.value)}
                         />
                         {errors.name && (
                             <p className="text-sm text-red-500">{errors.name}</p>
@@ -114,7 +139,7 @@ export function EmployeeFormDialog({
                             placeholder="john@company.com"
                             type="email"
                             value={form.email}
-                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            onChange={(e) => handleFieldChange('email', e.target.value)}
                         />
                         {errors.email && (
                             <p className="text-sm text-red-500">{errors.email}</p>
@@ -126,7 +151,7 @@ export function EmployeeFormDialog({
                             <label className="text-sm font-medium">Entity</label>
                             <Select
                                 value={form.entity_id}
-                                onValueChange={(val) => setForm({ ...form, entity_id: val })}
+                                onValueChange={(val) => handleFieldChange('entity_id', val)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select entity" />

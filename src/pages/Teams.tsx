@@ -8,8 +8,11 @@ import { Progress } from '@/components/ui/progress';
 import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 import type { ProjectFormData } from '@/components/projects/ProjectFormDialog';
 
-import { useProjects } from '@/hooks/useProjects';
+import { useProjects, useCreateProject, useUpdateProject } from '@/hooks/useProjects';
+import type { Project } from '@/types';
 import { useEntities } from '@/hooks/useEntities';
+import { Loading } from '@/components/ui/loading';
+import { toast } from 'sonner';
 
 
 
@@ -31,16 +34,51 @@ function getStatusBadge(status: string) {
 export function Teams() {
     const navigate = useNavigate();
     const [formOpen, setFormOpen] = useState(false);
+    const [editingProject, setEditingProject] = useState<Project | null>(null);
     const { data: projects = [], isLoading } = useProjects({ search: '' });
     const { data: entities = [] } = useEntities();
 
-    const handleCreateTeam = (values: ProjectFormData) => {
-        // TODO: Map team creation to project creation
-        console.log('Creating team:', values);
-        setFormOpen(false);
+    const createProject = useCreateProject();
+    const updateProject = useUpdateProject();
+
+    const handleFormSubmit = (values: ProjectFormData) => {
+        if (editingProject) {
+            updateProject.mutate(
+                { id: editingProject.id, ...values },
+                {
+                    onSuccess: () => {
+                        setFormOpen(false);
+                        setEditingProject(null);
+                        toast.success('Team updated successfully');
+                    },
+                    onError: (error: any) => {
+                        toast.error(`Failed to update team: ${error.message}`);
+                    }
+                }
+            );
+        } else {
+            createProject.mutate(
+                { ...values, status: 'active' },
+                {
+                    onSuccess: () => {
+                        setFormOpen(false);
+                        toast.success('Team created successfully');
+                    },
+                    onError: (error: any) => {
+                        toast.error(`Failed to create team: ${error.message}`);
+                    }
+                }
+            );
+        }
     };
 
-    if (isLoading) return <div className="p-8 text-center">Loading teams...</div>;
+    const handleEditClick = (project: Project, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingProject(project);
+        setFormOpen(true);
+    };
+
+    if (isLoading) return <Loading fullPage />;
 
     return (
         <div className="space-y-6">
@@ -53,7 +91,10 @@ export function Teams() {
                 </div>
                 <Button
                     className="bg-brand-600 hover:bg-brand-700 text-white"
-                    onClick={() => setFormOpen(true)}
+                    onClick={() => {
+                        setEditingProject(null);
+                        setFormOpen(true);
+                    }}
                 >
                     <Plus size={16} className="mr-2" />
                     Add Team
@@ -85,7 +126,16 @@ export function Teams() {
                                     <Badge variant="outline">{project.entity?.name}</Badge>
                                     {getStatusBadge(project.status)}
                                 </div>
-                                <CardTitle className="text-lg">{project.name}</CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-lg">{project.name}</CardTitle>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => handleEditClick(project, e)}
+                                    >
+                                        Edit
+                                    </Button>
+                                </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="space-y-2">
@@ -116,7 +166,9 @@ export function Teams() {
                 open={formOpen}
                 onOpenChange={setFormOpen}
                 entities={entities}
-                onSubmit={handleCreateTeam}
+                project={editingProject || undefined}
+                onSubmit={handleFormSubmit}
+                isLoading={createProject.isPending || updateProject.isPending}
             />
         </div>
     );

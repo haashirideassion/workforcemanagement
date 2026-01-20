@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
     House,
     Users,
@@ -27,6 +28,8 @@ import {
     SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { Toaster } from 'sonner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -52,8 +55,19 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 export function AppLayout() {
+    const { user, signOut } = useAuth();
+    const navigate = useNavigate();
     usePageTitle();
     const location = useLocation();
+
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/login');
+    };
+
+    const userEmail = user?.email || 'user@example.com';
+    const userName = user?.user_metadata?.full_name || userEmail.split('@')[0];
+    const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
     return (
         <SidebarProvider>
@@ -109,12 +123,12 @@ export function AppLayout() {
                                         className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                                     >
                                         <Avatar className="h-8 w-8 rounded-lg">
-                                            <AvatarImage src="https://github.com/shadcn.png" alt="User" />
-                                            <AvatarFallback className="rounded-lg">AM</AvatarFallback>
+                                            <AvatarImage src={`https://avatar.vercel.sh/${userEmail}.png`} alt={userName} />
+                                            <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                                         </Avatar>
                                         <div className="grid flex-1 text-left text-sm leading-tight">
-                                            <span className="truncate font-semibold">Admin User</span>
-                                            <span className="truncate text-xs">admin@company.com</span>
+                                            <span className="truncate font-semibold">{userName}</span>
+                                            <span className="truncate text-xs">{userEmail}</span>
                                         </div>
                                         <List className="ml-auto size-4" />
                                     </SidebarMenuButton>
@@ -128,17 +142,17 @@ export function AppLayout() {
                                     <DropdownMenuLabel className="p-0 font-normal">
                                         <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                             <Avatar className="h-8 w-8 rounded-lg">
-                                                <AvatarImage src="https://github.com/shadcn.png" alt="User" />
-                                                <AvatarFallback className="rounded-lg">AM</AvatarFallback>
+                                                <AvatarImage src={`https://avatar.vercel.sh/${userEmail}.png`} alt={userName} />
+                                                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                                             </Avatar>
                                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                                <span className="truncate font-semibold">Admin User</span>
-                                                <span className="truncate text-xs">admin@company.com</span>
+                                                <span className="truncate font-semibold">{userName}</span>
+                                                <span className="truncate text-xs">{userEmail}</span>
                                             </div>
                                         </div>
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
                                         Log out
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -174,9 +188,12 @@ export function AppLayout() {
                     </div>
                 </header>
                 <div className="flex-1 overflow-auto p-4 pt-0">
-                    <Outlet />
+                    <ErrorBoundary>
+                        <Outlet />
+                    </ErrorBoundary>
                 </div>
             </SidebarInset>
+            <Toaster position="top-right" closeButton richColors />
         </SidebarProvider>
     );
 }

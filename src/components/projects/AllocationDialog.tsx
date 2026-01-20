@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,6 +18,7 @@ import {
 import type { Employee, Project } from '@/types';
 
 export interface AllocationFormData {
+    id?: string;
     employee_id: string;
     project_id: string;
     allocation_percent: number;
@@ -32,6 +33,7 @@ interface AllocationDialogProps {
     projects?: Project[];
     preSelectedEmployeeId?: string;
     preSelectedProjectId?: string;
+    allocation?: AllocationFormData;
     onSubmit: (values: AllocationFormData) => void;
     isLoading?: boolean;
 }
@@ -43,17 +45,53 @@ export function AllocationDialog({
     projects = [],
     preSelectedEmployeeId,
     preSelectedProjectId,
+    allocation,
     onSubmit,
     isLoading,
 }: AllocationDialogProps) {
     const [form, setForm] = useState<AllocationFormData>({
-        employee_id: preSelectedEmployeeId || '',
-        project_id: preSelectedProjectId || '',
+        employee_id: '',
+        project_id: '',
         allocation_percent: 50,
         start_date: new Date().toISOString().split('T')[0],
         end_date: '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        if (open) {
+            if (allocation) {
+                setForm({
+                    id: allocation.id,
+                    employee_id: allocation.employee_id,
+                    project_id: allocation.project_id,
+                    allocation_percent: allocation.allocation_percent,
+                    start_date: allocation.start_date,
+                    end_date: allocation.end_date || '',
+                });
+            } else {
+                setForm({
+                    employee_id: preSelectedEmployeeId || '',
+                    project_id: preSelectedProjectId || '',
+                    allocation_percent: 50,
+                    start_date: new Date().toISOString().split('T')[0],
+                    end_date: '',
+                });
+            }
+            setErrors({});
+        }
+    }, [open, preSelectedEmployeeId, preSelectedProjectId, allocation]);
+
+    const handleFieldChange = (field: keyof AllocationFormData, value: any) => {
+        setForm(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+    };
 
     const validate = () => {
         const newErrors: Record<string, string> = {};
@@ -96,9 +134,11 @@ export function AllocationDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Add Allocation</DialogTitle>
+                    <DialogTitle>{allocation ? 'Edit Allocation' : 'Add Allocation'}</DialogTitle>
                     <DialogDescription>
-                        Allocate an employee to a project with a percentage of their time.
+                        {allocation 
+                            ? 'Update the allocation details for this team member.' 
+                            : 'Allocate an employee to a project with a percentage of their time.'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -108,7 +148,7 @@ export function AllocationDialog({
                             <label className="text-sm font-medium">Employee</label>
                             <Select
                                 value={form.employee_id}
-                                onValueChange={(val) => setForm({ ...form, employee_id: val })}
+                                onValueChange={(val) => handleFieldChange('employee_id', val)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select employee" />
@@ -132,7 +172,7 @@ export function AllocationDialog({
                             <label className="text-sm font-medium">Project</label>
                             <Select
                                 value={form.project_id}
-                                onValueChange={(val) => setForm({ ...form, project_id: val })}
+                                onValueChange={(val) => handleFieldChange('project_id', val)}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select project" />
@@ -162,7 +202,7 @@ export function AllocationDialog({
                                 min="1"
                                 max="100"
                                 value={form.allocation_percent}
-                                onChange={(e) => setForm({ ...form, allocation_percent: parseInt(e.target.value) || 0 })}
+                                onChange={(e) => handleFieldChange('allocation_percent', parseInt(e.target.value) || 0)}
                             />
                             <span className="text-muted-foreground">%</span>
                         </div>
@@ -180,7 +220,7 @@ export function AllocationDialog({
                                 id="start_date"
                                 type="date"
                                 value={form.start_date}
-                                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                                onChange={(e) => handleFieldChange('start_date', e.target.value)}
                             />
                             {errors.start_date && (
                                 <p className="text-sm text-red-500">{errors.start_date}</p>
@@ -213,7 +253,9 @@ export function AllocationDialog({
                             className="bg-brand-600 hover:bg-brand-700 text-white"
                             disabled={isLoading}
                         >
-                            {isLoading ? 'Adding...' : 'Add Allocation'}
+                            {isLoading 
+                                ? (allocation ? 'Updating...' : 'Adding...') 
+                                : (allocation ? 'Update Allocation' : 'Add Allocation')}
                         </Button>
                     </div>
                 </form>

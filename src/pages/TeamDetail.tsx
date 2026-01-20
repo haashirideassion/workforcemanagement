@@ -1,10 +1,10 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Buildings, Plus, CalendarBlank, Users } from '@phosphor-icons/react';
+import { ArrowLeft, Buildings, Plus, CalendarBlank, Users, Trash, Pencil } from '@phosphor-icons/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
     Table,
     TableBody,
@@ -14,6 +14,12 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useProject } from '@/hooks/useProjects';
+import { useCreateAllocation, useDeleteAllocation, useUpdateAllocation } from '@/hooks/useAllocations';
+import type { Allocation } from '@/types';
+import { AllocationDialog } from '@/components/projects/AllocationDialog';
+import type { AllocationFormData } from '@/components/projects/AllocationDialog';
+import { Loading } from '@/components/ui/loading';
+import { toast } from 'sonner';
 
 function getStatusBadge(status: string) {
     switch (status) {
@@ -31,15 +37,61 @@ function getStatusBadge(status: string) {
 export function TeamDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [allocationOpen, setAllocationOpen] = useState(false);
+    const [editingAllocation, setEditingAllocation] = useState<Allocation | null>(null);
+    
     const { data: project, isLoading, error } = useProject(id || '');
+    const createAllocation = useCreateAllocation();
+    const updateAllocation = useUpdateAllocation();
+    const deleteAllocation = useDeleteAllocation();
+
+    const handleFormSubmit = (values: AllocationFormData) => {
+        if (editingAllocation) {
+            updateAllocation.mutate({ id: editingAllocation.id, ...values }, {
+                onSuccess: () => {
+                    setAllocationOpen(false);
+                    setEditingAllocation(null);
+                    toast.success('Allocation updated successfully');
+                },
+                onError: (error: any) => {
+                    toast.error(`Failed to update allocation: ${error.message}`);
+                }
+            });
+        } else {
+            createAllocation.mutate(values, {
+                onSuccess: () => {
+                    setAllocationOpen(false);
+                    toast.success('Team member added successfully');
+                },
+                onError: (error: any) => {
+                    toast.error(`Failed to add team member: ${error.message}`);
+                }
+            });
+        }
+    };
+
+    const handleEditMember = (allocation: Allocation, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingAllocation(allocation);
+        setAllocationOpen(true);
+    };
+
+    const handleDeleteMember = (allocationId: string, e: React.MouseEvent | React.SyntheticEvent) => {
+        e.stopPropagation();
+        if (confirm('Are you sure you want to remove this member from the team?')) {
+            deleteAllocation.mutate(allocationId, {
+                onSuccess: () => {
+                    toast.success('Team member removed successfully');
+                },
+                onError: (error: any) => {
+                    toast.error(`Failed to remove team member: ${error.message}`);
+                }
+            });
+        }
+    };
 
     if (isLoading) {
-        return (
-            <div className="space-y-6">
-                <Skeleton className="h-8 w-48" />
-                <Skeleton className="h-64 w-full" />
-            </div>
-        );
+        return <Loading fullPage />;
     }
 
     if (error || !project) {
@@ -129,7 +181,13 @@ export function TeamDetail() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Team Members</CardTitle>
-                    <Button className="bg-brand-600 hover:bg-brand-700 text-white">
+                    <Button 
+                        className="bg-brand-600 hover:bg-brand-700 text-white"
+                        onClick={() => {
+                            setEditingAllocation(null);
+                            setAllocationOpen(true);
+                        }}
+                    >
                         <Plus size={16} className="mr-2" />
                         Add Member
                     </Button>
@@ -144,6 +202,7 @@ export function TeamDetail() {
                                     <TableHead>Allocation</TableHead>
                                     <TableHead>Start Date</TableHead>
                                     <TableHead>End Date</TableHead>
+                                    <TableHead className="w-[50px]"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -174,6 +233,26 @@ export function TeamDetail() {
                                         </TableCell>
                                         <TableCell>{allocation.start_date}</TableCell>
                                         <TableCell>{allocation.end_date || 'Ongoing'}</TableCell>
+                                         <TableCell>
+                                            <div className="flex items-center gap-1">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-muted-foreground hover:text-brand-600"
+                                                    onClick={(e) => handleEditMember(allocation, e)}
+                                                >
+                                                    <Pencil size={16} />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    onClick={(e) => handleDeleteMember(allocation.id, e)}
+                                                >
+                                                    <Trash size={16} />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -185,6 +264,22 @@ export function TeamDetail() {
                     )}
                 </CardContent>
             </Card>
+
+            <AllocationDialog
+                open={allocationOpen}
+                onOpenChange={setAllocationOpen}
+                preSelectedProjectId={id}
+                allocation={editingAllocation ? {
+                    id: editingAllocation.id,
+                    employee_id: editingAllocation.employee_id,
+                    project_id: editingAllocation.project_id,
+                    allocation_percent: editingAllocation.allocation_percent,
+                    start_date: editingAllocation.start_date,
+                    end_date: editingAllocation.end_date || '',
+                } : undefined}
+                onSubmit={handleFormSubmit}
+                isLoading={createAllocation.isPending || updateAllocation.isPending}
+            />
         </div>
     );
 }

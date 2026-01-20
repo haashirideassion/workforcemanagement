@@ -13,6 +13,10 @@ import { Skills } from '@/pages/Skills';
 import { Optimization } from '@/pages/Optimization';
 import { AllocationBoard } from '@/pages/AllocationBoard';
 
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { Login } from '@/pages/Login';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -26,24 +30,34 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <TooltipProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<AppLayout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="/employees" element={<Employees />} />
-                <Route path="/employees/:id" element={<EmployeeDetail />} />
-                <Route path="/teams" element={<Teams />} />
+        <AuthProvider>
+          <TooltipProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route index element={<Dashboard />} />
+                  <Route path="/employees" element={<Employees />} />
+                  <Route path="/employees/:id" element={<EmployeeDetail />} />
+                  <Route path="/teams" element={<Teams />} />
 
-                <Route path="/teams/:id" element={<TeamDetail />} />
-                <Route path="utilization" element={<Utilization />} />
-                <Route path="skills" element={<Skills />} />
-                <Route path="optimization" element={<Optimization />} />
-                <Route path="allocations" element={<AllocationBoard />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+                  <Route path="/teams/:id" element={<TeamDetail />} />
+                  <Route path="utilization" element={<Utilization />} />
+                  <Route path="skills" element={<Skills />} />
+                  <Route path="optimization" element={<Optimization />} />
+                  <Route path="allocations" element={<AllocationBoard />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
