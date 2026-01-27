@@ -88,22 +88,22 @@ function DroppableProject({ project, children }: { project: any; children: React
     );
 }
 
-export function AllocationBoard() {
+export function UtilizationBoard() {
     const { data: employees = [], isLoading: loadingEmployees } = useEmployees();
     const { data: projects = [], isLoading: loadingProjects } = useProjects({ status: 'active' });
 
-    const [allocations, setAllocations] = useState<Record<string, string[]>>({});
+    const [utilization, setUtilization] = useState<Record<string, string[]>>({});
 
-    // Initialize allocations from project data
+    // Initialize utilization from project data
     useEffect(() => {
         if (projects.length > 0) {
-            const initialAllocations: Record<string, string[]> = {};
+            const initialUtilization: Record<string, string[]> = {};
             projects.forEach(project => {
-                if (project.allocations) {
-                    initialAllocations[project.id] = project.allocations.map((a: any) => a.employee.id);
+                if (project.utilization) {
+                    initialUtilization[project.id] = project.utilization.map((a: any) => a.employee.id);
                 }
             });
-            setAllocations(initialAllocations);
+            setUtilization(initialUtilization);
         }
     }, [projects]);
 
@@ -131,10 +131,10 @@ export function AllocationBoard() {
                 const employeeId = active.id as string;
 
                 // Check if already assigned
-                const isAssigned = allocations[projectId]?.includes(employeeId);
+                const isAssigned = utilization[projectId]?.includes(employeeId);
 
                 if (!isAssigned) {
-                    setAllocations(prev => ({
+                    setUtilization(prev => ({
                         ...prev,
                         [projectId]: [...(prev[projectId] || []), employeeId]
                     }));
@@ -149,7 +149,7 @@ export function AllocationBoard() {
 
 
     if (loadingEmployees || loadingProjects) {
-        return <div className="p-8 text-center">Loading allocation board...</div>;
+        return <div className="p-8 text-center">Loading utilization board...</div>;
     }
 
     return (
@@ -183,7 +183,7 @@ export function AllocationBoard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {projects.map(proj => (
                             <DroppableProject key={proj.id} project={proj}>
-                                {allocations[proj.id]?.map(empId => {
+                                {utilization[proj.id]?.map(empId => {
                                     const emp = employees.find(e => e.id === empId);
                                     return emp ? (
                                         <div key={emp.id} className="flex items-center gap-2 text-sm p-2 bg-background rounded border">

@@ -27,19 +27,19 @@ export const projectFormSchema = z.object({
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 
-// Allocation form schema
-export const allocationFormSchema = z.object({
+// Utilization form schema
+export const utilizationFormSchema = z.object({
     employee_id: z.string().min(1, 'Please select an employee'),
     project_id: z.string().min(1, 'Please select a project'),
-    allocation_percent: z.coerce
+    utilization_percent: z.coerce
         .number()
-        .min(1, 'Allocation must be at least 1%')
-        .max(100, 'Allocation cannot exceed 100%'),
+        .min(1, 'Utilization must be at least 1%')
+        .max(100, 'Utilization cannot exceed 100%'),
     start_date: z.string().min(1, 'Start date is required'),
     end_date: z.string().optional(),
 });
 
-export type AllocationFormValues = z.infer<typeof allocationFormSchema>;
+export type UtilizationFormValues = z.infer<typeof utilizationFormSchema>;
 
 // Skill form schema
 export const skillFormSchema = z.object({

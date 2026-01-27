@@ -15,23 +15,23 @@ INSERT INTO skills (name, category) VALUES
 
 -- Insert sample employees
 INSERT INTO employees (name, email, entity_id, employment_type, performance_score) VALUES
-  ('John Doe', 'john.doe@company.com', (SELECT id FROM entities WHERE name = 'ITA'), 'permanent', 8.5),
+  ('John Doe', 'john.doe@company.com', (SELECT id FROM entities WHERE name = 'ITS'), 'permanent', 8.5),
   ('Jane Smith', 'jane.smith@company.com', (SELECT id FROM entities WHERE name = 'IBCC'), 'permanent', 7.8),
   ('Mike Johnson', 'mike.johnson@company.com', (SELECT id FROM entities WHERE name = 'IITT'), 'retainer', 6.5),
-  ('Sarah Williams', 'sarah.williams@company.com', (SELECT id FROM entities WHERE name = 'ITA'), 'permanent', 9.2),
+  ('Sarah Williams', 'sarah.williams@company.com', (SELECT id FROM entities WHERE name = 'ITS'), 'permanent', 9.2),
   ('David Brown', 'david.brown@company.com', (SELECT id FROM entities WHERE name = 'IBCC'), 'retainer', 4.5),
   ('Emily Davis', 'emily.davis@company.com', (SELECT id FROM entities WHERE name = 'IITT'), 'permanent', 7.5),
-  ('Chris Miller', 'chris.miller@company.com', (SELECT id FROM entities WHERE name = 'ITA'), 'permanent', 3.0),
+  ('Chris Miller', 'chris.miller@company.com', (SELECT id FROM entities WHERE name = 'ITS'), 'permanent', 3.0),
   ('Lisa Wilson', 'lisa.wilson@company.com', (SELECT id FROM entities WHERE name = 'IBCC'), 'permanent', 8.9),
   ('Tom Anderson', 'tom.anderson@company.com', (SELECT id FROM entities WHERE name = 'IBCC'), 'retainer', 5.0),
-  ('Amy Chen', 'amy.chen@company.com', (SELECT id FROM entities WHERE name = 'ITA'), 'permanent', 7.0);
+  ('Amy Chen', 'amy.chen@company.com', (SELECT id FROM entities WHERE name = 'ITS'), 'permanent', 7.0);
 
 -- Insert sample projects
 INSERT INTO projects (name, entity_id, start_date, end_date, status) VALUES
-  ('Project Alpha', (SELECT id FROM entities WHERE name = 'ITA'), '2025-10-01', '2026-03-31', 'active'),
+  ('Project Alpha', (SELECT id FROM entities WHERE name = 'ITS'), '2025-10-01', '2026-03-31', 'active'),
   ('Project Beta', (SELECT id FROM entities WHERE name = 'IBCC'), '2025-11-15', '2026-02-28', 'active'),
   ('Project Gamma', (SELECT id FROM entities WHERE name = 'IITT'), '2025-09-01', '2026-04-30', 'on-hold'),
-  ('Project Delta', (SELECT id FROM entities WHERE name = 'ITA'), '2025-06-01', '2025-12-31', 'completed'),
+  ('Project Delta', (SELECT id FROM entities WHERE name = 'ITS'), '2025-06-01', '2025-12-31', 'completed'),
   ('Project Epsilon', (SELECT id FROM entities WHERE name = 'IBCC'), '2026-01-01', '2026-06-30', 'active');
 
 -- Insert sample allocations

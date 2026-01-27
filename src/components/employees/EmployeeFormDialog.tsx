@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
 } from '@/components/ui/dialog';
 import {
     Select,
@@ -14,14 +16,25 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { ArrowRight, Plus, X } from '@phosphor-icons/react';
 import type { Employee, Entity } from '@/types';
 
 export interface EmployeeFormData {
     name: string;
     email: string;
     entity_id: string;
-    employment_type: 'permanent' | 'retainer';
+    employment_type: 'permanent' | 'retainer' | 'intern';
     performance_score: number | null;
+}
+
+export interface ExtendedEmployeeInfo {
+    dateOfJoining: string;
+    pastExperience: string;
+    phoneNumber: string;
+    personalEmail: string;
+    pastCompanies: { name: string; role: string; duration: string }[];
+    designation: string;
+    currentRole: string;
 }
 
 interface EmployeeFormDialogProps {
@@ -29,9 +42,10 @@ interface EmployeeFormDialogProps {
     onOpenChange: (open: boolean) => void;
     employee?: Employee | null;
     entities: Entity[];
-    onSubmit: (values: EmployeeFormData) => void;
+    onSubmit: (values: EmployeeFormData, extendedInfo?: ExtendedEmployeeInfo) => void;
     isLoading?: boolean;
 }
+
 
 export function EmployeeFormDialog({
     open,
@@ -42,6 +56,7 @@ export function EmployeeFormDialog({
     isLoading,
 }: EmployeeFormDialogProps) {
     const isEditing = !!employee;
+    const [step, setStep] = useState<1 | 2>(1);
     const [form, setForm] = useState<EmployeeFormData>({
         name: '',
         email: '',
@@ -49,10 +64,21 @@ export function EmployeeFormDialog({
         employment_type: 'permanent',
         performance_score: null,
     });
+    const [extendedInfo, setExtendedInfo] = useState<ExtendedEmployeeInfo>({
+        dateOfJoining: '',
+        pastExperience: '',
+        phoneNumber: '',
+        personalEmail: '',
+        pastCompanies: [],
+        designation: '',
+        currentRole: '',
+    });
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [newCompany, setNewCompany] = useState({ name: '', role: '', duration: '' });
 
     useEffect(() => {
         if (open) {
+            setStep(1);
             setForm({
                 name: employee?.name || '',
                 email: employee?.email || '',
@@ -60,13 +86,22 @@ export function EmployeeFormDialog({
                 employment_type: employee?.employment_type || 'permanent',
                 performance_score: employee?.performance_score || null,
             });
+            setExtendedInfo({
+                dateOfJoining: '',
+                pastExperience: '',
+                phoneNumber: '',
+                personalEmail: '',
+                pastCompanies: [],
+                designation: '',
+                currentRole: '',
+            });
             setErrors({});
+            setNewCompany({ name: '', role: '', duration: '' });
         }
     }, [open, employee]);
 
     const handleFieldChange = (field: keyof EmployeeFormData, value: any) => {
         setForm(prev => ({ ...prev, [field]: value }));
-        // Clear error as soon as user starts typing/selecting
         if (errors[field]) {
             setErrors(prev => {
                 const newErrors = { ...prev };
@@ -76,7 +111,11 @@ export function EmployeeFormDialog({
         }
     };
 
-    const validate = () => {
+    const handleExtendedChange = (field: keyof ExtendedEmployeeInfo, value: any) => {
+        setExtendedInfo(prev => ({ ...prev, [field]: value }));
+    };
+
+    const validateStep1 = () => {
         const newErrors: Record<string, string> = {};
         if (!form.name || form.name.trim().length === 0) {
             newErrors.name = 'Name is required';
@@ -91,137 +130,465 @@ export function EmployeeFormDialog({
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (validate()) {
-            onSubmit(form);
-            setForm({
-                name: '',
-                email: '',
-                entity_id: '',
-                employment_type: 'permanent',
-                performance_score: null,
-            });
+    const handleNext = () => {
+        if (validateStep1()) {
+            setStep(2);
         }
     };
 
+    const addPastCompany = () => {
+        if (newCompany.name.trim()) {
+            setExtendedInfo(prev => ({
+                ...prev,
+                pastCompanies: [...prev.pastCompanies, { ...newCompany }]
+            }));
+            setNewCompany({ name: '', role: '', duration: '' });
+        }
+    };
+
+    const removePastCompany = (index: number) => {
+        setExtendedInfo(prev => ({
+            ...prev,
+            pastCompanies: prev.pastCompanies.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleSubmitWithExtended = () => {
+        onSubmit(form, extendedInfo);
+        resetForm();
+    };
+
+    const handleSkip = () => {
+        onSubmit(form);
+        resetForm();
+    };
+
+    const resetForm = () => {
+        setForm({
+            name: '',
+            email: '',
+            entity_id: '',
+            employment_type: 'permanent',
+            performance_score: null,
+        });
+        setExtendedInfo({
+            dateOfJoining: '',
+            pastExperience: '',
+            phoneNumber: '',
+            personalEmail: '',
+            pastCompanies: [],
+            designation: '',
+            currentRole: '',
+        });
+        setStep(1);
+    };
+
+    const handleSubmitEdit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (validateStep1()) {
+            onSubmit(form);
+            resetForm();
+        }
+    };
+
+    // If editing, show single-step form
+    if (isEditing) {
+        return (
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Employee</DialogTitle>
+                    </DialogHeader>
+
+                    <form onSubmit={handleSubmitEdit} className="space-y-4">
+                        <div className="space-y-2">
+                            <label htmlFor="name" className="text-sm font-medium">
+                                Full Name
+                            </label>
+                            <Input
+                                id="name"
+                                placeholder="John Doe"
+                                value={form.name}
+                                onChange={(e) => handleFieldChange('name', e.target.value)}
+                            />
+                            {errors.name && (
+                                <p className="text-sm text-red-500">{errors.name}</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="email" className="text-sm font-medium">
+                                Email
+                            </label>
+                            <Input
+                                id="email"
+                                placeholder="john@company.com"
+                                type="email"
+                                value={form.email}
+                                onChange={(e) => handleFieldChange('email', e.target.value)}
+                            />
+                            {errors.email && (
+                                <p className="text-sm text-red-500">{errors.email}</p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Entity</label>
+                                <Select
+                                    value={form.entity_id}
+                                    onValueChange={(val) => handleFieldChange('entity_id', val)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select entity" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {entities.map((entity) => (
+                                            <SelectItem key={entity.id} value={entity.id}>
+                                                {entity.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.entity_id && (
+                                    <p className="text-sm text-red-500">{errors.entity_id}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Employment Type</label>
+                                <Select
+                                    value={form.employment_type}
+                                    onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="permanent">Permanent</SelectItem>
+                                        <SelectItem value="retainer">Retainer</SelectItem>
+                                        <SelectItem value="intern">Intern</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="performance_score" className="text-sm font-medium">
+                                Performance Score (0-10)
+                            </label>
+                            <Input
+                                id="performance_score"
+                                type="number"
+                                min="0"
+                                max="10"
+                                step="0.1"
+                                placeholder="7.5"
+                                value={form.performance_score ?? ''}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    performance_score: e.target.value ? parseFloat(e.target.value) : null
+                                })}
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                className="bg-brand-600 hover:bg-brand-700 text-white"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+        );
+    }
+
+    // Two-step flow for adding new employee
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>
-                        {isEditing ? 'Edit Employee' : 'Add New Employee'}
+                        {step === 1 ? 'Add New Employee' : 'Extended Information'}
                     </DialogTitle>
+                    {step === 2 && (
+                        <DialogDescription>
+                            Add additional details for {form.name} (optional)
+                        </DialogDescription>
+                    )}
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <label htmlFor="name" className="text-sm font-medium">
-                            Full Name
-                        </label>
-                        <Input
-                            id="name"
-                            placeholder="John Doe"
-                            value={form.name}
-                            onChange={(e) => handleFieldChange('name', e.target.value)}
-                        />
-                        {errors.name && (
-                            <p className="text-sm text-red-500">{errors.name}</p>
-                        )}
-                    </div>
-
-                    <div className="space-y-2">
-                        <label htmlFor="email" className="text-sm font-medium">
-                            Email
-                        </label>
-                        <Input
-                            id="email"
-                            placeholder="john@company.com"
-                            type="email"
-                            value={form.email}
-                            onChange={(e) => handleFieldChange('email', e.target.value)}
-                        />
-                        {errors.email && (
-                            <p className="text-sm text-red-500">{errors.email}</p>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
+                {step === 1 ? (
+                    // Step 1: Basic Info
+                    <div className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Entity</label>
-                            <Select
-                                value={form.entity_id}
-                                onValueChange={(val) => handleFieldChange('entity_id', val)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select entity" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {entities.map((entity) => (
-                                        <SelectItem key={entity.id} value={entity.id}>
-                                            {entity.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.entity_id && (
-                                <p className="text-sm text-red-500">{errors.entity_id}</p>
+                            <label htmlFor="name" className="text-sm font-medium">
+                                Full Name
+                            </label>
+                            <Input
+                                id="name"
+                                placeholder="John Doe"
+                                value={form.name}
+                                onChange={(e) => handleFieldChange('name', e.target.value)}
+                            />
+                            {errors.name && (
+                                <p className="text-sm text-red-500">{errors.name}</p>
                             )}
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Employment Type</label>
-                            <Select
-                                value={form.employment_type}
-                                onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' })}
+                            <label htmlFor="email" className="text-sm font-medium">
+                                Email
+                            </label>
+                            <Input
+                                id="email"
+                                placeholder="john@company.com"
+                                type="email"
+                                value={form.email}
+                                onChange={(e) => handleFieldChange('email', e.target.value)}
+                            />
+                            {errors.email && (
+                                <p className="text-sm text-red-500">{errors.email}</p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Entity</label>
+                                <Select
+                                    value={form.entity_id}
+                                    onValueChange={(val) => handleFieldChange('entity_id', val)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select entity" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {entities.map((entity) => (
+                                            <SelectItem key={entity.id} value={entity.id}>
+                                                {entity.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.entity_id && (
+                                    <p className="text-sm text-red-500">{errors.entity_id}</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Employment Type</label>
+                                <Select
+                                    value={form.employment_type}
+                                    onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="permanent">Permanent</SelectItem>
+                                        <SelectItem value="retainer">Retainer</SelectItem>
+                                        <SelectItem value="intern">Intern</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="performance_score" className="text-sm font-medium">
+                                Performance Score (0-10)
+                            </label>
+                            <Input
+                                id="performance_score"
+                                type="number"
+                                min="0"
+                                max="10"
+                                step="0.1"
+                                placeholder="7.5"
+                                value={form.performance_score ?? ''}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    performance_score: e.target.value ? parseFloat(e.target.value) : null
+                                })}
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
                             >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="permanent">Permanent</SelectItem>
-                                    <SelectItem value="retainer">Retainer</SelectItem>
-                                </SelectContent>
-                            </Select>
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                className="bg-brand-600 hover:bg-brand-700 text-white gap-2"
+                                onClick={handleNext}
+                            >
+                                Next
+                                <ArrowRight size={16} weight="bold" />
+                            </Button>
                         </div>
                     </div>
+                ) : (
+                    // Step 2: Extended Info
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Date of Joining</label>
+                                <Input
+                                    type="date"
+                                    value={extendedInfo.dateOfJoining}
+                                    onChange={(e) => handleExtendedChange('dateOfJoining', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Phone Number</label>
+                                <Input
+                                    placeholder="+91 9876543210"
+                                    value={extendedInfo.phoneNumber}
+                                    onChange={(e) => handleExtendedChange('phoneNumber', e.target.value)}
+                                />
+                            </div>
+                        </div>
 
-                    <div className="space-y-2">
-                        <label htmlFor="performance_score" className="text-sm font-medium">
-                            Performance Score (0-10)
-                        </label>
-                        <Input
-                            id="performance_score"
-                            type="number"
-                            min="0"
-                            max="10"
-                            step="0.1"
-                            placeholder="7.5"
-                            value={form.performance_score ?? ''}
-                            onChange={(e) => setForm({
-                                ...form,
-                                performance_score: e.target.value ? parseFloat(e.target.value) : null
-                            })}
-                        />
-                    </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Personal Email</label>
+                            <Input
+                                type="email"
+                                placeholder="personal@email.com"
+                                value={extendedInfo.personalEmail}
+                                onChange={(e) => handleExtendedChange('personalEmail', e.target.value)}
+                            />
+                        </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            className="bg-brand-600 hover:bg-brand-700 text-white"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Employee'}
-                        </Button>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Designation</label>
+                                <Input
+                                    placeholder="Senior Developer"
+                                    value={extendedInfo.designation}
+                                    onChange={(e) => handleExtendedChange('designation', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Current Role</label>
+                                <Input
+                                    placeholder="Tech Lead"
+                                    value={extendedInfo.currentRole}
+                                    onChange={(e) => handleExtendedChange('currentRole', e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Past Experience</label>
+                            <Textarea
+                                placeholder="Brief summary of past experience..."
+                                rows={2}
+                                value={extendedInfo.pastExperience}
+                                onChange={(e) => handleExtendedChange('pastExperience', e.target.value)}
+                            />
+                        </div>
+
+                        {/* Past Companies Section */}
+                        <div className="space-y-3">
+                            <label className="text-sm font-medium">Past Companies</label>
+
+                            {extendedInfo.pastCompanies.length > 0 && (
+                                <div className="space-y-2">
+                                    {extendedInfo.pastCompanies.map((company, index) => (
+                                        <div key={index} className="flex items-center gap-2 p-2 rounded-lg border bg-muted/30">
+                                            <div className="flex-1 text-sm">
+                                                <span className="font-medium">{company.name}</span>
+                                                {company.role && <span className="text-muted-foreground"> • {company.role}</span>}
+                                                {company.duration && <span className="text-muted-foreground"> • {company.duration}</span>}
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => removePastCompany(index)}
+                                            >
+                                                <X size={14} />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-3 gap-2">
+                                <Input
+                                    placeholder="Company"
+                                    value={newCompany.name}
+                                    onChange={(e) => setNewCompany(prev => ({ ...prev, name: e.target.value }))}
+                                />
+                                <Input
+                                    placeholder="Role"
+                                    value={newCompany.role}
+                                    onChange={(e) => setNewCompany(prev => ({ ...prev, role: e.target.value }))}
+                                />
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Duration"
+                                        value={newCompany.duration}
+                                        onChange={(e) => setNewCompany(prev => ({ ...prev, duration: e.target.value }))}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="shrink-0"
+                                        onClick={addPastCompany}
+                                        disabled={!newCompany.name.trim()}
+                                    >
+                                        <Plus size={16} />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between gap-3 pt-4 border-t">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setStep(1)}
+                            >
+                                Back
+                            </Button>
+                            <div className="flex gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleSkip}
+                                    disabled={isLoading}
+                                >
+                                    Skip for now
+                                </Button>
+                                <Button
+                                    type="button"
+                                    className="bg-brand-600 hover:bg-brand-700 text-white"
+                                    onClick={handleSubmitWithExtended}
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Saving...' : 'Submit'}
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                </form>
+                )}
             </DialogContent>
         </Dialog>
     );

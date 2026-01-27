@@ -12,7 +12,7 @@ export function useEmployees(filters?: EmployeeFilters) {
                 .select(`
           *,
           entity:entities(id, name),
-          allocations(id, allocation_percent, start_date, end_date, project:projects(id, name))
+          utilization_data:allocations(id, utilization_percent:allocation_percent, start_date, end_date, project:projects(id, name))
         `)
                 .eq('status', 'active')
                 .order('name');
@@ -33,12 +33,12 @@ export function useEmployees(filters?: EmployeeFilters) {
             // Calculate utilization for each employee
             return data.map((emp) => {
                 const today = new Date().toISOString().split('T')[0];
-                const activeAllocations = emp.allocations?.filter(
+                const activeAllocations = emp.utilization_data?.filter(
                     (a: { start_date: string; end_date: string | null }) =>
                         a.start_date <= today && (!a.end_date || a.end_date >= today)
                 ) || [];
                 const utilization = activeAllocations.reduce(
-                    (sum: number, a: { allocation_percent: number }) => sum + a.allocation_percent,
+                    (sum: number, a: { utilization_percent: number }) => sum + a.utilization_percent,
                     0
                 );
                 return { ...emp, utilization: Math.min(utilization, 100) };
@@ -57,7 +57,7 @@ export function useEmployee(id: string) {
                 .select(`
           *,
           entity:entities(id, name),
-          allocations(*, project:projects(*)),
+          utilization_data:allocations(*, utilization_percent:allocation_percent, project:projects(*)),
           employee_skills(*, skill:skills(*)),
           certifications(*)
         `)

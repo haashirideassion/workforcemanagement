@@ -4,7 +4,7 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Entities table (ITA, IBCC, IITT)
+-- Entities table (ITS, IBCC, IITT)
 CREATE TABLE entities (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(50) NOT NULL UNIQUE,
@@ -12,7 +12,7 @@ CREATE TABLE entities (
 );
 
 -- Insert default entities
-INSERT INTO entities (name) VALUES ('ITA'), ('IBCC'), ('IITT');
+INSERT INTO entities (name) VALUES ('ITS'), ('IBCC'), ('IITT');
 
 -- Employees table
 CREATE TABLE employees (
@@ -39,12 +39,12 @@ CREATE TABLE projects (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Allocations table
-CREATE TABLE allocations (
+-- Utilizations table
+CREATE TABLE utilizations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-  allocation_percent INTEGER CHECK (allocation_percent > 0 AND allocation_percent <= 100),
+  utilization_percent INTEGER CHECK (utilization_percent > 0 AND utilization_percent <= 100),
   start_date DATE NOT NULL,
   end_date DATE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

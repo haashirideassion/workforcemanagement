@@ -4,7 +4,7 @@ import { ArrowLeft, Buildings, Plus, CalendarBlank, Users, Trash, Pencil } from 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { SegmentedProgress } from '@/components/ui/segmented-progress';
 import {
     Table,
     TableBody,
@@ -14,77 +14,77 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useProject } from '@/hooks/useProjects';
-import { useCreateAllocation, useDeleteAllocation, useUpdateAllocation } from '@/hooks/useAllocations';
-import type { Allocation } from '@/types';
-import { AllocationDialog } from '@/components/projects/AllocationDialog';
-import type { AllocationFormData } from '@/components/projects/AllocationDialog';
+import { useCreateUtilization, useDeleteUtilization, useUpdateUtilization } from '@/hooks/useUtilization';
+import type { Utilization } from '@/types';
+import { UtilizationDialog } from '@/components/projects/UtilizationDialog';
+import type { UtilizationFormData } from '@/components/projects/UtilizationDialog';
 import { Loading } from '@/components/ui/loading';
 import { toast } from 'sonner';
 
 function getStatusBadge(status: string) {
     switch (status) {
         case 'active':
-            return <Badge className="bg-green-100 text-green-700">Active</Badge>;
+            return <Badge variant="green">Active</Badge>;
         case 'on-hold':
-            return <Badge className="bg-yellow-100 text-yellow-700">On Hold</Badge>;
+            return <Badge variant="yellow">On Hold</Badge>;
         case 'completed':
-            return <Badge className="bg-blue-100 text-blue-700">Completed</Badge>;
+            return <Badge variant="blue">Completed</Badge>;
         default:
             return <Badge variant="secondary">{status}</Badge>;
     }
 }
 
-export function TeamDetail() {
+export function ProjectDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [allocationOpen, setAllocationOpen] = useState(false);
-    const [editingAllocation, setEditingAllocation] = useState<Allocation | null>(null);
-    
-    const { data: project, isLoading, error } = useProject(id || '');
-    const createAllocation = useCreateAllocation();
-    const updateAllocation = useUpdateAllocation();
-    const deleteAllocation = useDeleteAllocation();
+    const [utilizationOpen, setUtilizationOpen] = useState(false);
+    const [editingUtilization, setEditingUtilization] = useState<Utilization | null>(null);
 
-    const handleFormSubmit = (values: AllocationFormData) => {
-        if (editingAllocation) {
-            updateAllocation.mutate({ id: editingAllocation.id, ...values }, {
+    const { data: project, isLoading, error } = useProject(id || '');
+    const createUtilization = useCreateUtilization();
+    const updateUtilization = useUpdateUtilization();
+    const deleteUtilization = useDeleteUtilization();
+
+    const handleFormSubmit = (values: UtilizationFormData) => {
+        if (editingUtilization) {
+            updateUtilization.mutate({ id: editingUtilization.id, ...values }, {
                 onSuccess: () => {
-                    setAllocationOpen(false);
-                    setEditingAllocation(null);
-                    toast.success('Allocation updated successfully');
+                    setUtilizationOpen(false);
+                    setEditingUtilization(null);
+                    toast.success('Utilization updated successfully');
                 },
                 onError: (error: any) => {
-                    toast.error(`Failed to update allocation: ${error.message}`);
+                    toast.error(`Failed to update utilization: ${error.message}`);
                 }
             });
         } else {
-            createAllocation.mutate(values, {
+            createUtilization.mutate(values, {
                 onSuccess: () => {
-                    setAllocationOpen(false);
-                    toast.success('Team member added successfully');
+                    setUtilizationOpen(false);
+                    toast.success('Project member added successfully');
                 },
                 onError: (error: any) => {
-                    toast.error(`Failed to add team member: ${error.message}`);
+                    toast.error(`Failed to add project member: ${error.message}`);
                 }
             });
         }
     };
 
-    const handleEditMember = (allocation: Allocation, e: React.MouseEvent) => {
+    const handleEditMember = (utilization: Utilization, e: React.MouseEvent) => {
         e.stopPropagation();
-        setEditingAllocation(allocation);
-        setAllocationOpen(true);
+        setEditingUtilization(utilization);
+        setUtilizationOpen(true);
     };
 
-    const handleDeleteMember = (allocationId: string, e: React.MouseEvent | React.SyntheticEvent) => {
+    const handleDeleteMember = (utilizationId: string, e: React.MouseEvent | React.SyntheticEvent) => {
         e.stopPropagation();
-        if (confirm('Are you sure you want to remove this member from the team?')) {
-            deleteAllocation.mutate(allocationId, {
+        if (confirm('Are you sure you want to remove this member from the project?')) {
+            deleteUtilization.mutate(utilizationId, {
                 onSuccess: () => {
-                    toast.success('Team member removed successfully');
+                    toast.success('Project member removed successfully');
                 },
                 onError: (error: any) => {
-                    toast.error(`Failed to remove team member: ${error.message}`);
+                    toast.error(`Failed to remove project member: ${error.message}`);
                 }
             });
         }
@@ -97,9 +97,9 @@ export function TeamDetail() {
     if (error || !project) {
         return (
             <div className="flex flex-col items-center justify-center py-12">
-                <p className="text-muted-foreground">Team not found</p>
-                <Button variant="link" onClick={() => navigate('/teams')}>
-                    Back to Teams
+                <p className="text-muted-foreground">Project not found</p>
+                <Button variant="link" onClick={() => navigate('/projects')}>
+                    Back to Projects
                 </Button>
             </div>
         );
@@ -115,14 +115,14 @@ export function TeamDetail() {
     }
     if (project.status === 'completed') progress = 100;
 
-    const totalAllocation = project.allocations?.reduce((sum, a) => sum + a.allocation_percent, 0) || 0;
-    const teamSize = project.allocations?.length || 0;
+    const totalUtilization = project.utilization?.reduce((sum, a) => sum + a.utilization_percent, 0) || 0;
+    const teamSize = project.utilization?.length || 0;
 
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/teams')}>
+                <Button variant="ghost" size="icon" onClick={() => navigate('/projects')}>
                     <ArrowLeft size={20} />
                 </Button>
                 <div className="flex-1">
@@ -151,7 +151,7 @@ export function TeamDetail() {
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{teamSize}</p>
-                                <p className="text-sm text-muted-foreground">Team Members</p>
+                                <p className="text-sm text-muted-foreground">Project Members</p>
                             </div>
                         </div>
                     </CardContent>
@@ -163,15 +163,15 @@ export function TeamDetail() {
                                 <span className="text-muted-foreground">Progress</span>
                                 <span className="font-medium">{progress}%</span>
                             </div>
-                            <Progress value={progress} className="h-2" />
+                            <SegmentedProgress value={progress} size="md" />
                         </div>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardContent className="pt-6">
                         <div>
-                            <p className="text-2xl font-bold">{totalAllocation}%</p>
-                            <p className="text-sm text-muted-foreground">Total Allocation</p>
+                            <p className="text-2xl font-bold">{totalUtilization}%</p>
+                            <p className="text-sm text-muted-foreground">Total Utilization</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -180,12 +180,12 @@ export function TeamDetail() {
             {/* Team Members */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Team Members</CardTitle>
-                    <Button 
+                    <CardTitle>Project Members</CardTitle>
+                    <Button
                         className="bg-brand-600 hover:bg-brand-700 text-white"
                         onClick={() => {
-                            setEditingAllocation(null);
-                            setAllocationOpen(true);
+                            setEditingUtilization(null);
+                            setUtilizationOpen(true);
                         }}
                     >
                         <Plus size={16} className="mr-2" />
@@ -193,61 +193,67 @@ export function TeamDetail() {
                     </Button>
                 </CardHeader>
                 <CardContent>
-                    {project.allocations && project.allocations.length > 0 ? (
+                    {project.utilization && project.utilization.length > 0 ? (
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Employee</TableHead>
-                                    <TableHead>Entity</TableHead>
-                                    <TableHead>Allocation</TableHead>
+                                    <TableHead>Role</TableHead>
+                                    <TableHead>Specialization</TableHead>
+                                    <TableHead>Utilization</TableHead>
                                     <TableHead>Start Date</TableHead>
                                     <TableHead>End Date</TableHead>
                                     <TableHead className="w-[50px]"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {project.allocations.map((allocation) => (
+                                {project.utilization.map((utilization) => (
                                     <TableRow
-                                        key={allocation.id}
+                                        key={utilization.id}
                                         className="cursor-pointer hover:bg-muted/50"
-                                        onClick={() => navigate(`/employees/${allocation.employee_id}`)}
+                                        onClick={() => navigate(`/employees/${utilization.employee_id}`)}
                                     >
                                         <TableCell>
                                             <div>
-                                                <p className="font-medium">{allocation.employee?.name}</p>
+                                                <p className="font-medium">{utilization.employee?.name}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {allocation.employee?.email}
+                                                    {utilization.employee?.email}
                                                 </p>
                                             </div>
                                         </TableCell>
                                         <TableCell>
+                                            <span className="text-sm">
+                                                {utilization.employee?.role || 'N/A'}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>
                                             <Badge variant="outline">
-                                                {allocation.employee?.entity?.name || 'N/A'}
+                                                {utilization.employee?.specialization || 'N/A'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={allocation.allocation_percent} className="h-2 w-16" />
-                                                <span>{allocation.allocation_percent}%</span>
+                                                <SegmentedProgress value={utilization.utilization_percent} size="sm" className="w-16" />
+                                                <span>{utilization.utilization_percent}%</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell>{allocation.start_date}</TableCell>
-                                        <TableCell>{allocation.end_date || 'Ongoing'}</TableCell>
-                                         <TableCell>
+                                        <TableCell>{utilization.start_date}</TableCell>
+                                        <TableCell>{utilization.end_date || 'Ongoing'}</TableCell>
+                                        <TableCell>
                                             <div className="flex items-center gap-1">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
                                                     className="h-8 w-8 text-muted-foreground hover:text-brand-600"
-                                                    onClick={(e) => handleEditMember(allocation, e)}
+                                                    onClick={(e) => handleEditMember(utilization, e)}
                                                 >
                                                     <Pencil size={16} />
                                                 </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
                                                     className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                    onClick={(e) => handleDeleteMember(allocation.id, e)}
+                                                    onClick={(e) => handleDeleteMember(utilization.id, e)}
                                                 >
                                                     <Trash size={16} />
                                                 </Button>
@@ -265,20 +271,20 @@ export function TeamDetail() {
                 </CardContent>
             </Card>
 
-            <AllocationDialog
-                open={allocationOpen}
-                onOpenChange={setAllocationOpen}
+            <UtilizationDialog
+                open={utilizationOpen}
+                onOpenChange={setUtilizationOpen}
                 preSelectedProjectId={id}
-                allocation={editingAllocation ? {
-                    id: editingAllocation.id,
-                    employee_id: editingAllocation.employee_id,
-                    project_id: editingAllocation.project_id,
-                    allocation_percent: editingAllocation.allocation_percent,
-                    start_date: editingAllocation.start_date,
-                    end_date: editingAllocation.end_date || '',
+                utilization={editingUtilization ? {
+                    id: editingUtilization.id,
+                    employee_id: editingUtilization.employee_id,
+                    project_id: editingUtilization.project_id,
+                    utilization_percent: editingUtilization.utilization_percent,
+                    start_date: editingUtilization.start_date,
+                    end_date: editingUtilization.end_date || '',
                 } : undefined}
                 onSubmit={handleFormSubmit}
-                isLoading={createAllocation.isPending || updateAllocation.isPending}
+                isLoading={createUtilization.isPending || updateUtilization.isPending}
             />
         </div>
     );

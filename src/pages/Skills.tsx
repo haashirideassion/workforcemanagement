@@ -43,13 +43,13 @@ export function Skills() {
             {/* Summary */}
             <div className="grid gap-4 sm:grid-cols-3">
                 <Card>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-4">
                         <div className="text-3xl font-bold">{mockSkills.length}</div>
                         <p className="text-sm text-muted-foreground">Total Skills</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-4">
                         <div className="text-3xl font-bold text-brand-600">
                             {mockSkills.filter(s => !s.gap).length}
                         </div>
@@ -57,7 +57,7 @@ export function Skills() {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-4">
                         <div className="text-3xl font-bold text-red-600">
                             {mockSkills.filter(s => s.gap).length}
                         </div>
@@ -68,7 +68,7 @@ export function Skills() {
 
             {/* Search */}
             <Card>
-                <CardContent className="pt-6">
+                <CardContent className="p-4">
                     <div className="relative max-w-md">
                         <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                         <Input placeholder="Search skills..." className="pl-9" />
@@ -101,11 +101,11 @@ export function Skills() {
                                     <TableCell>{skill.employeeCount} employees</TableCell>
                                     <TableCell>
                                         {skill.gap ? (
-                                            <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                                            <Badge variant="destructive">
                                                 Gap Identified
                                             </Badge>
                                         ) : (
-                                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                                            <Badge variant="green">
                                                 Well Covered
                                             </Badge>
                                         )}

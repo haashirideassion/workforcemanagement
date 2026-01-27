@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { Allocation } from '@/types';
+import type { Utilization } from '@/types';
 
-// Fetch allocations for an employee
-export function useEmployeeAllocations(employeeId: string) {
+// Fetch utilization for an employee
+export function useEmployeeUtilization(employeeId: string) {
     return useQuery({
-        queryKey: ['allocations', 'employee', employeeId],
+        queryKey: ['utilization', 'employee', employeeId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('allocations')
@@ -17,16 +17,19 @@ export function useEmployeeAllocations(employeeId: string) {
                 .order('start_date', { ascending: false });
 
             if (error) throw error;
-            return data as Allocation[];
+            return data.map((d: any) => ({
+                ...d,
+                utilization_percent: d.allocation_percent
+            })) as Utilization[];
         },
         enabled: !!employeeId,
     });
 }
 
-// Fetch allocations for a project
-export function useProjectAllocations(projectId: string) {
+// Fetch utilization for a project
+export function useProjectUtilization(projectId: string) {
     return useQuery({
-        queryKey: ['allocations', 'project', projectId],
+        queryKey: ['utilization', 'project', projectId],
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('allocations')
@@ -38,21 +41,32 @@ export function useProjectAllocations(projectId: string) {
                 .order('start_date', { ascending: false });
 
             if (error) throw error;
-            return data as Allocation[];
+            return data.map((d: any) => ({
+                ...d,
+                utilization_percent: d.allocation_percent
+            })) as Utilization[];
         },
         enabled: !!projectId,
     });
 }
 
-// Create allocation
-export function useCreateAllocation() {
+// Create utilization
+export function useCreateUtilization() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (allocation: Omit<Allocation, 'id' | 'created_at'>) => {
+        mutationFn: async (utilization: Omit<Utilization, 'id' | 'created_at'>) => {
+            // Map utilization_percent back to allocation_percent for DB
+            const dbPayload = {
+                ...utilization,
+                allocation_percent: utilization.utilization_percent
+            };
+            // remove utilization_percent if it exists in payload
+            if ('utilization_percent' in dbPayload) delete (dbPayload as any).utilization_percent;
+
             const { data, error } = await supabase
                 .from('allocations')
-                .insert(allocation)
+                .insert(dbPayload)
                 .select()
                 .single();
 
@@ -60,7 +74,7 @@ export function useCreateAllocation() {
             return data;
         },
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['allocations'] });
+            queryClient.invalidateQueries({ queryKey: ['utilization'] });
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['employee', variables.employee_id] });
             queryClient.invalidateQueries({ queryKey: ['project', variables.project_id] });
@@ -68,15 +82,21 @@ export function useCreateAllocation() {
     });
 }
 
-// Update allocation
-export function useUpdateAllocation() {
+// Update utilization
+export function useUpdateUtilization() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ id, ...updates }: Partial<Allocation> & { id: string }) => {
+        mutationFn: async ({ id, ...updates }: Partial<Utilization> & { id: string }) => {
+            const dbUpdates: any = { ...updates };
+            if (updates.utilization_percent !== undefined) {
+                dbUpdates.allocation_percent = updates.utilization_percent;
+                delete dbUpdates.utilization_percent;
+            }
+
             const { data, error } = await supabase
                 .from('allocations')
-                .update(updates)
+                .update(dbUpdates)
                 .eq('id', id)
                 .select()
                 .single();
@@ -85,15 +105,15 @@ export function useUpdateAllocation() {
             return data;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['allocations'] });
+            queryClient.invalidateQueries({ queryKey: ['utilization'] });
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['projects'] });
         },
     });
 }
 
-// Delete allocation
-export function useDeleteAllocation() {
+// Delete utilization
+export function useDeleteUtilization() {
     const queryClient = useQueryClient();
 
     return useMutation({
@@ -106,7 +126,7 @@ export function useDeleteAllocation() {
             if (error) throw error;
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['allocations'] });
+            queryClient.invalidateQueries({ queryKey: ['utilization'] });
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['projects'] });
         },

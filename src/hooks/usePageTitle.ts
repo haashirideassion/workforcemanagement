@@ -5,10 +5,10 @@ const routeTitles: Record<string, string> = {
     '/': 'Dashboard | Workforce Management',
     '/employees': 'Employees | Workforce Management',
     '/teams': 'Teams | Workforce Management',
-    '/utilization': 'Utilization | Workforce Management',
+    '/allocations': 'Project Allocations | Workforce Management',
     '/skills': 'Skills Directory | Workforce Management',
     '/optimization': 'Optimization | Workforce Management',
-    '/allocations': 'Allocations | Workforce Management',
+    '/allocation-board': 'Allocation Board | Workforce Management',
 };
 
 export function usePageTitle() {

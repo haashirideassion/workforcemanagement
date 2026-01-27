@@ -1,15 +1,31 @@
 // Entity types
 export interface Entity {
     id: string;
-    name: 'ITA' | 'IBCC' | 'IITT';
+    name: 'ITS' | 'IBCC' | 'IITT';
     created_at: string;
 }
 
 // Employment types
-export type EmploymentType = 'permanent' | 'retainer';
+export type EmploymentType = 'permanent' | 'retainer' | 'intern';
 export type EmployeeStatus = 'active' | 'archived';
-export type ProjectStatus = 'active' | 'completed' | 'on-hold';
+export type ProjectStatus = 'active' | 'completed' | 'on-hold' | 'proposal';
 export type SkillProficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
+// Account types
+export interface Account {
+    id: string;
+    name: string;
+    email: string;
+    entity: 'ITS' | 'IBCC' | 'IITT';
+    activeProjects: number;
+    utilizedResources: number;
+    utilization: number;
+    billingType: 'T&M' | 'Fixed' | 'Retainer';
+    status: 'healthy' | 'at-risk' | 'critical' | 'on-hold';
+    zone: 'USA' | 'Asia' | 'EMEA' | 'LatAm' | 'APAC' | 'Europe';
+    contractValue?: number;
+    startDate: string;
+}
 
 // Employee types
 export interface Employee {
@@ -20,12 +36,14 @@ export interface Employee {
     employment_type: EmploymentType;
     status: EmployeeStatus;
     performance_score: number | null;
+    role?: string;
+    specialization?: string;
     created_at: string;
     updated_at: string;
     // Computed fields
     entity?: Entity;
     skills?: EmployeeSkill[];
-    allocations?: Allocation[];
+    utilization_data?: Utilization[];
     certifications?: Certification[];
     utilization?: number;
 }
@@ -42,15 +60,17 @@ export interface Project {
     updated_at: string;
     // Computed fields
     entity?: Entity;
-    allocations?: Allocation[];
+    utilization?: Utilization[];
+    account?: Account;
+    account_id?: string;
 }
 
-// Allocation types
-export interface Allocation {
+// Utilization types
+export interface Utilization {
     id: string;
     employee_id: string;
     project_id: string;
-    allocation_percent: number;
+    utilization_percent: number;
     start_date: string;
     end_date: string | null;
     created_at: string;
@@ -87,8 +107,8 @@ export interface Certification {
     created_at: string;
 }
 
-// Utilization types
-export type UtilizationCategory = 'healthy' | 'watch' | 'risk';
+// Utilization types (effort-based project utilization)
+export type UtilizationCategory = 'fully-utilized' | 'partially-utilized' | 'available';
 
 export interface UtilizationData {
     employee: Employee;
@@ -116,6 +136,7 @@ export interface ProjectFilters {
     entity?: string;
     status?: ProjectStatus;
     search?: string;
+    accountId?: string;
 }
 
 // Risk tags for optimization

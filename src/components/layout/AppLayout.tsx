@@ -10,6 +10,7 @@ import {
     Bell,
     List,
     MagnifyingGlass,
+    Buildings,
 } from '@phosphor-icons/react';
 import {
     Sidebar,
@@ -44,7 +45,8 @@ import {
 const navItems = [
     { to: '/', label: 'Overview', icon: House },
     { to: '/employees', label: 'Employees', icon: Users },
-    { to: '/teams', label: 'Teams', icon: Briefcase },
+    { to: '/accounts', label: 'Accounts', icon: Buildings },
+    { to: '/projects', label: 'Projects', icon: Briefcase },
     { to: '/utilization', label: 'Utilization', icon: ChartBar },
     { to: '/skills', label: 'Skills', icon: Certificate },
     { to: '/optimization', label: 'Optimization', icon: TrendUp },
@@ -53,12 +55,21 @@ const navItems = [
 import { CommandPalette } from './CommandPalette';
 import { ModeToggle } from '@/components/mode-toggle';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { useTheme } from '@/components/theme-provider';
+import { GradientButton } from '@/components/ui/gradient-button';
 
 export function AppLayout() {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
     usePageTitle();
     const location = useLocation();
+    const { theme } = useTheme();
+
+    const isDark =
+        theme === 'dark' ||
+        (theme === 'system' &&
+            typeof window !== 'undefined' &&
+            window.matchMedia?.('(prefers-color-scheme: dark)').matches);
 
     const handleLogout = async () => {
         await signOut();
@@ -72,18 +83,20 @@ export function AppLayout() {
     return (
         <SidebarProvider>
             <CommandPalette />
-            <Sidebar collapsible="icon" variant="inset">
+            <Sidebar collapsible="icon" variant="inset" style={{ fontFamily: 'var(--font-heading)' }}>
                 <SidebarHeader>
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton size="lg" asChild>
                                 <a href="#">
-                                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-brand-600 text-sidebar-primary-foreground">
-                                        <div className="font-bold text-white">W</div>
-                                    </div>
-                                    <div className="grid flex-1 text-left text-sm leading-tight">
-                                        <span className="truncate font-semibold">Workforce</span>
-                                        <span className="truncate text-xs">Management System</span>
+                                    <img
+                                        src="/src/assets/itslogo.png"
+                                        alt="Ideassion Logo"
+                                        className="size-8 rounded-lg object-contain"
+                                    />
+                                    <div className="grid flex-1 text-left text-sm leading-tight" style={{ fontFamily: 'var(--font-heading)' }}>
+                                        <span className="truncate font-semibold">Ideassion</span>
+                                        <span className="truncate text-xs">Workforce System</span>
                                     </div>
                                 </a>
                             </SidebarMenuButton>
@@ -92,23 +105,48 @@ export function AppLayout() {
                 </SidebarHeader>
                 <SidebarContent>
                     <SidebarGroup>
-                        <SidebarGroupLabel>Platform</SidebarGroupLabel>
+                        {/* <SidebarGroupLabel>Platform</SidebarGroupLabel> */}
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                {navItems.map((item) => (
-                                    <SidebarMenuItem key={item.to}>
-                                        <SidebarMenuButton
-                                            asChild
-                                            isActive={location.pathname === item.to}
-                                            tooltip={item.label}
-                                        >
-                                            <NavLink to={item.to}>
-                                                <item.icon weight={location.pathname === item.to ? "fill" : "duotone"} />
-                                                <span>{item.label}</span>
-                                            </NavLink>
-                                        </SidebarMenuButton>
-                                    </SidebarMenuItem>
-                                ))}
+                                {navItems.map((item) => {
+                                    const isActive = location.pathname === item.to;
+                                    const showGradient = isDark && isActive;
+
+                                    return (
+                                        <SidebarMenuItem key={item.to}>
+                                            {showGradient ? (
+                                                <SidebarMenuButton
+                                                    isActive={isActive}
+                                                    tooltip={item.label}
+                                                    className="p-0 bg-transparent hover:bg-transparent data-[active=true]:bg-transparent data-[active=true]:ring-0 data-[active=true]:outline-none focus-visible:ring-0"
+                                                >
+                                                    <GradientButton className="w-full h-10 px-3 py-2 flex items-center justify-start gap-2 rounded-sm">
+                                                        <NavLink
+                                                            to={item.to}
+                                                            className="flex items-center gap-2 w-full text-white"
+                                                        >
+                                                            <item.icon weight="fill" className="size-4 shrink-0" />
+                                                            <span>{item.label}</span>
+                                                        </NavLink>
+                                                    </GradientButton>
+                                                </SidebarMenuButton>
+                                            ) : (
+                                                <SidebarMenuButton
+                                                    asChild
+                                                    isActive={isActive}
+                                                    tooltip={item.label}
+                                                >
+                                                    <NavLink to={item.to}>
+                                                        <item.icon
+                                                            weight={isActive ? 'fill' : 'duotone'}
+                                                        />
+                                                        <span>{item.label}</span>
+                                                    </NavLink>
+                                                </SidebarMenuButton>
+                                            )}
+                                        </SidebarMenuItem>
+                                    );
+                                })}
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
@@ -122,11 +160,10 @@ export function AppLayout() {
                                         size="lg"
                                         className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                                     >
-                                        <Avatar className="h-8 w-8 rounded-lg">
-                                            <AvatarImage src={`https://avatar.vercel.sh/${userEmail}.png`} alt={userName} />
-                                            <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="grid flex-1 text-left text-sm leading-tight">
+                                        <div className="h-8 w-8 rounded-lg bg-brand-600 flex items-center justify-center">
+                                            <Users size={16} className="text-white" weight="fill" />
+                                        </div>
+                                        <div className="grid flex-1 text-left text-sm leading-tight" style={{ fontFamily: 'var(--font-sans)' }}>
                                             <span className="truncate font-semibold">{userName}</span>
                                             <span className="truncate text-xs">{userEmail}</span>
                                         </div>
@@ -141,10 +178,9 @@ export function AppLayout() {
                                 >
                                     <DropdownMenuLabel className="p-0 font-normal">
                                         <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                                            <Avatar className="h-8 w-8 rounded-lg">
-                                                <AvatarImage src={`https://avatar.vercel.sh/${userEmail}.png`} alt={userName} />
-                                                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
-                                            </Avatar>
+                                            <div className="h-8 w-8 rounded-lg bg-brand-600 flex items-center justify-center">
+                                                <Users size={16} className="text-white" weight="fill" />
+                                            </div>
                                             <div className="grid flex-1 text-left text-sm leading-tight">
                                                 <span className="truncate font-semibold">{userName}</span>
                                                 <span className="truncate text-xs">{userEmail}</span>

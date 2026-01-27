@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { SegmentedProgress } from '@/components/ui/segmented-progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Table,
@@ -11,35 +11,35 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
-// Mock data
+// Mock data - utilization represents % effort utilized to projects
 const mockUtilizationData = [
-    { id: '1', name: 'John Doe', entity: 'ITA', utilization: 85, allocations: 2 },
-    { id: '2', name: 'Jane Smith', entity: 'IBCC', utilization: 60, allocations: 1 },
-    { id: '3', name: 'Mike Johnson', entity: 'IITT', utilization: 45, allocations: 1 },
-    { id: '4', name: 'Sarah Williams', entity: 'ITA', utilization: 100, allocations: 3 },
-    { id: '5', name: 'David Brown', entity: 'IBCC', utilization: 20, allocations: 0 },
-    { id: '6', name: 'Emily Davis', entity: 'IITT', utilization: 75, allocations: 2 },
-    { id: '7', name: 'Chris Miller', entity: 'ITA', utilization: 0, allocations: 0 },
-    { id: '8', name: 'Lisa Wilson', entity: 'IBCC', utilization: 90, allocations: 2 },
+    { id: '1', name: 'John Doe', entity: 'ITS', utilization: 85, projectCount: 2 },
+    { id: '2', name: 'Jane Smith', entity: 'IBCC', utilization: 60, projectCount: 1 },
+    { id: '3', name: 'Mike Johnson', entity: 'IITT', utilization: 45, projectCount: 1 },
+    { id: '4', name: 'Sarah Williams', entity: 'ITS', utilization: 100, projectCount: 3 },
+    { id: '5', name: 'David Brown', entity: 'IBCC', utilization: 20, projectCount: 0 },
+    { id: '6', name: 'Emily Davis', entity: 'IITT', utilization: 75, projectCount: 2 },
+    { id: '7', name: 'Chris Miller', entity: 'ITS', utilization: 0, projectCount: 0 },
+    { id: '8', name: 'Lisa Wilson', entity: 'IBCC', utilization: 90, projectCount: 2 },
 ];
 
 function getUtilizationCategory(utilization: number) {
-    if (utilization >= 80) return { label: 'Healthy', color: 'bg-green-100 text-green-700' };
-    if (utilization >= 50) return { label: 'Watch', color: 'bg-yellow-100 text-yellow-700' };
-    return { label: 'Risk', color: 'bg-red-100 text-red-700' };
+    if (utilization >= 80) return { label: 'Fully Utilized', variant: 'green' as const };
+    if (utilization > 50) return { label: 'Partially Utilized', variant: 'yellow' as const };
+    return { label: 'Available', variant: 'blue' as const };
 }
 
 export function Utilization() {
-    const healthyCount = mockUtilizationData.filter(e => e.utilization >= 80).length;
-    const watchCount = mockUtilizationData.filter(e => e.utilization >= 50 && e.utilization < 80).length;
-    const riskCount = mockUtilizationData.filter(e => e.utilization < 50).length;
+    const fullyUtilizedCount = mockUtilizationData.filter(e => e.utilization >= 80).length;
+    const partiallyUtilizedCount = mockUtilizationData.filter(e => e.utilization > 50 && e.utilization < 80).length;
+    const availableCount = mockUtilizationData.filter(e => e.utilization <= 50).length;
 
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">Utilization</h1>
+                <h1 className="text-2xl font-bold">Resource Utilization</h1>
                 <p className="text-muted-foreground">
-                    Track employee utilization across projects
+                    Track resource utilization across projects
                 </p>
             </div>
 
@@ -48,47 +48,46 @@ export function Utilization() {
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Healthy (≥80%)
+                            Fully Utilized (≥80%)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-green-600">{healthyCount}</div>
+                        <div className="text-3xl font-bold text-green-600">{fullyUtilizedCount}</div>
                         <p className="text-sm text-muted-foreground">employees</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Watch (50-79%)
+                            Partially Utilized (51-79%)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-yellow-600">{watchCount}</div>
+                        <div className="text-3xl font-bold text-yellow-600">{partiallyUtilizedCount}</div>
                         <p className="text-sm text-muted-foreground">employees</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Risk (&lt;50%)
+                            Available (&le;50%)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-red-600">{riskCount}</div>
+                        <div className="text-3xl font-bold text-blue-600">{availableCount}</div>
                         <p className="text-sm text-muted-foreground">employees</p>
                     </CardContent>
                 </Card>
             </div>
-
             {/* Utilization Table */}
             <Card>
                 <CardHeader>
                     <Tabs defaultValue="all">
                         <TabsList>
                             <TabsTrigger value="all">All ({mockUtilizationData.length})</TabsTrigger>
-                            <TabsTrigger value="healthy">Healthy ({healthyCount})</TabsTrigger>
-                            <TabsTrigger value="watch">Watch ({watchCount})</TabsTrigger>
-                            <TabsTrigger value="risk">Risk ({riskCount})</TabsTrigger>
+                            <TabsTrigger value="fully">Fully Utilized ({fullyUtilizedCount})</TabsTrigger>
+                            <TabsTrigger value="partial">Partial ({partiallyUtilizedCount})</TabsTrigger>
+                            <TabsTrigger value="available">Available ({availableCount})</TabsTrigger>
                         </TabsList>
                     </Tabs>
                 </CardHeader>
@@ -98,7 +97,7 @@ export function Utilization() {
                             <TableRow>
                                 <TableHead>Employee</TableHead>
                                 <TableHead>Entity</TableHead>
-                                <TableHead>Allocations</TableHead>
+                                <TableHead>Projects</TableHead>
                                 <TableHead>Utilization</TableHead>
                                 <TableHead>Status</TableHead>
                             </TableRow>
@@ -112,15 +111,15 @@ export function Utilization() {
                                         <TableCell>
                                             <Badge variant="outline">{employee.entity}</Badge>
                                         </TableCell>
-                                        <TableCell>{employee.allocations} projects</TableCell>
+                                        <TableCell>{employee.projectCount}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={employee.utilization} className="h-2 w-24" />
+                                                <SegmentedProgress value={employee.utilization} segments={20} size="sm" className="w-24" />
                                                 <span className="text-sm">{employee.utilization}%</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge className={`${category.color} hover:${category.color}`}>
+                                            <Badge variant={category.variant}>
                                                 {category.label}
                                             </Badge>
                                         </TableCell>
