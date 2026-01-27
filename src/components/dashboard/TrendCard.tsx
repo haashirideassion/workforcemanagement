@@ -48,7 +48,7 @@ export function TrendCard({
             className={cn("relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow", className)}
             onClick={onDetailClick}
         >
-            <CardHeader className="flex flex-row items-center justify-between pb-0 pt-2 px-3 space-y-0">
+            <CardHeader className="flex flex-row items-center justify-between pb-0 pt-0 px-3 space-y-0">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                     {title}
                 </CardTitle>
@@ -78,18 +78,11 @@ export function TrendCard({
                 <div className="h-[50px] w-full mt-1 -mx-2 mb-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="currentColor" stopOpacity={0.1} className={trend.isPositive ? "text-green-500" : "text-red-500"} />
-                                    <stop offset="95%" stopColor="currentColor" stopOpacity={0} className={trend.isPositive ? "text-green-500" : "text-red-500"} />
-                                </linearGradient>
-                            </defs>
-                            <YAxis domain={['dataMin', 'dataMax']} hide />
                             <Area
                                 type="monotone"
                                 dataKey="value"
                                 stroke={trend.isPositive ? "#16a34a" : "#dc2626"} // green-600 or red-600
-                                fill={`url(#gradient-${title})`}
+                                fill="none"
                                 strokeWidth={2}
                             />
                         </AreaChart>

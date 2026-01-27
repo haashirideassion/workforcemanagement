@@ -6,7 +6,7 @@ export interface Entity {
 }
 
 // Employment types
-export type EmploymentType = 'permanent' | 'retainer' | 'intern';
+export type EmploymentType = 'permanent' | 'retainer' | 'intern' | 'contractor';
 export type EmployeeStatus = 'active' | 'archived';
 export type ProjectStatus = 'active' | 'completed' | 'on-hold' | 'proposal';
 export type SkillProficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert';

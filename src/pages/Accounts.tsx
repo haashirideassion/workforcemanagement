@@ -6,6 +6,8 @@ import {
     Funnel,
     DotsThree,
     Buildings,
+    Briefcase,
+    User,
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -199,7 +201,7 @@ export function Accounts() {
                                 <TableHead>Entity</TableHead>
                                 <TableHead>Active Projects</TableHead>
                                 <TableHead>Utilized Resources</TableHead>
-                                <TableHead>Utilization</TableHead>
+                                <TableHead>Average Utilization</TableHead>
                                 <TableHead>Zone</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
@@ -223,12 +225,15 @@ export function Accounts() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <Buildings size={14} className="text-muted-foreground" />
+                                            <Briefcase size={14} className="text-muted-foreground" />
                                             <span>{account.activeProjects}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span>{account.utilizedResources}</span>
+                                        <div className="flex items-center gap-2">
+                                            <User size={14} className="text-muted-foreground" />
+                                            <span>{account.utilizedResources}</span>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SegmentedProgress } from '@/components/ui/segmented-progress';
@@ -30,17 +31,50 @@ function getUtilizationCategory(utilization: number) {
 }
 
 export function Utilization() {
-    const fullyUtilizedCount = mockUtilizationData.filter(e => e.utilization >= 80).length;
-    const partiallyUtilizedCount = mockUtilizationData.filter(e => e.utilization > 50 && e.utilization < 80).length;
-    const availableCount = mockUtilizationData.filter(e => e.utilization <= 50).length;
+    const [selectedEntity, setSelectedEntity] = useState<'ITA' | 'IBCC' | 'IITT' | null>(null);
+
+    const filteredData = mockUtilizationData.filter(
+        (item) => !selectedEntity || item.entity === selectedEntity
+    );
+
+    const fullyUtilizedCount = filteredData.filter(e => e.utilization >= 80).length;
+    const partiallyUtilizedCount = filteredData.filter(e => e.utilization > 50 && e.utilization < 80).length;
+    const availableCount = filteredData.filter(e => e.utilization <= 50).length;
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold">Resource Utilization</h1>
-                <p className="text-muted-foreground">
-                    Track resource utilization across projects
-                </p>
+            <div className="flex flex-col gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold">Resource Utilization</h1>
+                    <p className="text-muted-foreground">
+                        Track resource utilization across projects
+                    </p>
+                </div>
+
+                {/* Entity Pills */}
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setSelectedEntity(null)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${selectedEntity === null
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            }`}
+                    >
+                        All Entities
+                    </button>
+                    {['ITA', 'IBCC', 'IITT'].map((entity) => (
+                        <button
+                            key={entity}
+                            onClick={() => setSelectedEntity(entity as any)}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${selectedEntity === entity
+                                ? 'bg-primary text-primary-foreground shadow-md'
+                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                }`}
+                        >
+                            {entity}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Summary Cards */}
@@ -53,7 +87,6 @@ export function Utilization() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold text-green-600">{fullyUtilizedCount}</div>
-                        <p className="text-sm text-muted-foreground">employees</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -64,7 +97,6 @@ export function Utilization() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold text-yellow-600">{partiallyUtilizedCount}</div>
-                        <p className="text-sm text-muted-foreground">employees</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -75,7 +107,6 @@ export function Utilization() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold text-blue-600">{availableCount}</div>
-                        <p className="text-sm text-muted-foreground">employees</p>
                     </CardContent>
                 </Card>
             </div>
@@ -84,7 +115,7 @@ export function Utilization() {
                 <CardHeader>
                     <Tabs defaultValue="all">
                         <TabsList>
-                            <TabsTrigger value="all">All ({mockUtilizationData.length})</TabsTrigger>
+                            <TabsTrigger value="all">All ({filteredData.length})</TabsTrigger>
                             <TabsTrigger value="fully">Fully Utilized ({fullyUtilizedCount})</TabsTrigger>
                             <TabsTrigger value="partial">Partial ({partiallyUtilizedCount})</TabsTrigger>
                             <TabsTrigger value="available">Available ({availableCount})</TabsTrigger>
@@ -103,18 +134,20 @@ export function Utilization() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {mockUtilizationData.map((employee) => {
+                            {filteredData.map((employee) => {
                                 const category = getUtilizationCategory(employee.utilization);
                                 return (
                                     <TableRow key={employee.id}>
                                         <TableCell className="font-medium">{employee.name}</TableCell>
                                         <TableCell>
-                                            <Badge variant="outline">{employee.entity}</Badge>
+                                            <Badge variant="outline" className="font-normal">
+                                                {employee.entity}
+                                            </Badge>
                                         </TableCell>
                                         <TableCell>{employee.projectCount}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <SegmentedProgress value={employee.utilization} segments={20} size="sm" className="w-24" />
+                                                <SegmentedProgress value={employee.utilization} size="sm" className="w-24" />
                                                 <span className="text-sm">{employee.utilization}%</span>
                                             </div>
                                         </TableCell>

@@ -24,7 +24,7 @@ import type { Project } from '@/types';
 import { useEntities } from '@/hooks/useEntities';
 import { Loading } from '@/components/ui/loading';
 import { toast } from 'sonner';
-// Removed useAccounts import
+import { useAccounts } from '@/hooks/useAccounts';
 
 function getStatusBadge(status: string) {
     switch (status) {
@@ -62,6 +62,7 @@ export function Projects() {
     });
 
     const { data: entities = [] } = useEntities();
+    const { data: accounts = [] } = useAccounts();
 
     const createProject = useCreateProject();
     const updateProject = useUpdateProject();
@@ -324,6 +325,7 @@ export function Projects() {
                 open={formOpen}
                 onOpenChange={setFormOpen}
                 entities={entities}
+                accounts={accounts}
                 project={editingProject || undefined}
                 onSubmit={handleFormSubmit}
                 isLoading={createProject.isPending || updateProject.isPending}

@@ -24,14 +24,15 @@ export interface AccountMetric {
     id: string;
     name: string;
     headcountChange: number; // positive = increase, negative = decrease
+    totalCount: number;
 }
 
 const mockAccountMetrics: AccountMetric[] = [
-    { id: '1', name: 'Acme Corp', headcountChange: 5 },
-    { id: '2', name: 'TechStart', headcountChange: -2 },
-    { id: '3', name: 'Global Finance', headcountChange: 3 },
-    { id: '5', name: 'RetailMax', headcountChange: 0 },
-    { id: '7', name: 'CloudNine', headcountChange: -1 },
+    { id: '1', name: 'Acme Corp', headcountChange: 5, totalCount: 12 },
+    { id: '2', name: 'TechStart', headcountChange: -2, totalCount: 8 },
+    { id: '3', name: 'Global Finance', headcountChange: 3, totalCount: 15 },
+    { id: '5', name: 'RetailMax', headcountChange: 0, totalCount: 6 },
+    { id: '7', name: 'CloudNine', headcountChange: -1, totalCount: 10 },
 ];
 
 export function useDashboardKPIs() {
@@ -210,29 +211,19 @@ export function useUpcomingReleases() {
     return useQuery({
         queryKey: ['dashboard', 'releases'],
         queryFn: async () => {
+            // Mock data for upcoming releases (using existing employees from useEmployees.ts)
             const today = new Date();
-            const twoWeeksLater = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+            const mockReleases = [
+                { employee: 'Jane Smith', employeeId: 'e2', project: 'Project Alpha', endDate: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+                { employee: 'Alice Johnson', employeeId: 'e3', project: 'Project Beta', endDate: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+                { employee: 'John Doe', employeeId: 'e1', project: 'Project Alpha', endDate: new Date(today.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+                { employee: 'Diana Prince', employeeId: 'e6', project: 'Project Gamma', endDate: new Date(today.getTime() + 12 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+            ];
 
-            const { data } = await supabase
-                .from('allocations')
-                .select(`
-          end_date,
-                    employee: employees(name),
-                    project: projects(name)
-                    `)
-                .gte('end_date', today.toISOString().split('T')[0])
-                .lte('end_date', twoWeeksLater.toISOString().split('T')[0])
-                .order('end_date');
+            // Simulate delay
+            await new Promise((resolve) => setTimeout(resolve, 500));
 
-            return data?.map((item) => {
-                const empData = item.employee as { name: string }[] | null;
-                const projData = item.project as { name: string }[] | null;
-                return {
-                    employee: empData?.[0]?.name || 'Unknown',
-                    project: projData?.[0]?.name || 'Unknown',
-                    endDate: item.end_date,
-                };
-            }) || [];
+            return mockReleases;
         },
     });
 }

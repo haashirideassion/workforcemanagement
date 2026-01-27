@@ -90,9 +90,19 @@ export function Employees() {
   const [entityFilter, setEntityFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  // Advanced Filters State
-  const [utilizationRange, setUtilizationRange] = useState<[number, number]>([0, 100]);
-  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  // Filter Logic Mapping
+  const getFilterConfig = (filter: string): { range: [number, number], statuses: string[] } => {
+    switch (filter) {
+      case 'assigned': return { range: [80, 100], statuses: ['fully'] };
+      case 'virtual_pool': return { range: [1, 79], statuses: ['partial'] };
+      case 'benched': return { range: [0, 0], statuses: ['available'] };
+      case 'all':
+      default: return { range: [0, 100], statuses: [] };
+    }
+  };
+
+  const [utilizationRange, setUtilizationRange] = useState<[number, number]>(() => getFilterConfig(initialFilter).range);
+  const [statusFilters, setStatusFilters] = useState<string[]>(() => getFilterConfig(initialFilter).statuses);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   // Tabs "value" derived from range (for UI highlight)
@@ -100,7 +110,7 @@ export function Employees() {
     const [min, max] = utilizationRange;
     if (min === 0 && max === 100) return 'all';
     if (min === 80 && max === 100) return 'assigned';
-    if (min === 1 && max === 79) return 'virtual_pool'; // Approx? Logic below uses >0 && <80
+    if (min === 1 && max === 79) return 'virtual_pool';
     if (min === 0 && max === 0) return 'benched';
     return 'custom';
   };
@@ -108,19 +118,15 @@ export function Employees() {
 
   // Handle Tab Change (Shortcuts)
   const handleTabChange = (value: string) => {
-    if (value === 'all') {
-      setUtilizationRange([0, 100]);
-      setStatusFilters([]);
-    } else if (value === 'assigned') {
-      setUtilizationRange([80, 100]);
-      setStatusFilters(['fully']);
-    } else if (value === 'virtual_pool') {
-      setUtilizationRange([1, 79]);
-      setStatusFilters(['partial']); // Approx
-    } else if (value === 'benched') {
-      setUtilizationRange([0, 0]);
-      setStatusFilters(['available']); // "Available" usually means <=50, but "Benched" is 0.
-    }
+    const config = getFilterConfig(value);
+    setUtilizationRange(config.range);
+    setStatusFilters(config.statuses);
+
+    // Update URL without reloading
+    const newParams = new URLSearchParams(searchParams);
+    if (value === 'all') newParams.delete('filter');
+    else newParams.set('filter', value);
+    navigate({ search: newParams.toString() }, { replace: true });
   };
 
   const [formOpen, setFormOpen] = useState(false);
@@ -307,7 +313,6 @@ export function Employees() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Designation</TableHead>
                 <TableHead>Project</TableHead>
                 <TableHead>Utilization</TableHead>
                 <TableHead>Status</TableHead>
@@ -326,16 +331,13 @@ export function Employees() {
                         <div>
                           <p className="font-medium">{employee.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {employee.email}
+                            {employee.role || '-'} • {employee.experience || 0} YOE
                           </p>
                         </div>
 
                       </TableCell>
                       <TableCell className="capitalize">
                         {employee.employment_type}
-                      </TableCell>
-                      <TableCell>
-                        {employee.role || '-'}
                       </TableCell>
                       <TableCell>
                         <div className="max-w-[200px] truncate">

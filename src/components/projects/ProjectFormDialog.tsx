@@ -14,14 +14,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import type { Project, Entity } from '@/types';
+import type { Project, Entity, Account } from '@/types';
 
 export interface ProjectFormData {
     name: string;
     entity_id: string;
+    account_id?: string;
     start_date: string;
     end_date: string;
-    status: 'active' | 'completed' | 'on-hold';
+    status: 'active' | 'completed' | 'on-hold' | 'proposal';
 }
 
 interface ProjectFormDialogProps {
@@ -29,6 +30,7 @@ interface ProjectFormDialogProps {
     onOpenChange: (open: boolean) => void;
     project?: Project | null;
     entities: Entity[];
+    accounts: Account[];
     onSubmit: (values: ProjectFormData) => void;
     isLoading?: boolean;
 }
@@ -38,6 +40,7 @@ export function ProjectFormDialog({
     onOpenChange,
     project,
     entities,
+    accounts,
     onSubmit,
     isLoading,
 }: ProjectFormDialogProps) {
@@ -45,6 +48,7 @@ export function ProjectFormDialog({
     const [form, setForm] = useState<ProjectFormData>({
         name: '',
         entity_id: '',
+        account_id: '',
         start_date: '',
         end_date: '',
         status: 'active',
@@ -56,6 +60,7 @@ export function ProjectFormDialog({
             setForm({
                 name: project?.name || '',
                 entity_id: project?.entity_id || '',
+                account_id: project?.account_id || '',
                 start_date: project?.start_date || '',
                 end_date: project?.end_date || '',
                 status: project?.status || 'active',
@@ -94,6 +99,7 @@ export function ProjectFormDialog({
             setForm({
                 name: '',
                 entity_id: '',
+                account_id: '',
                 start_date: '',
                 end_date: '',
                 status: 'active',
@@ -150,21 +156,41 @@ export function ProjectFormDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Status</label>
+                            <label className="text-sm font-medium">Account</label>
                             <Select
-                                value={form.status}
-                                onValueChange={(val) => setForm({ ...form, status: val as 'active' | 'completed' | 'on-hold' })}
+                                value={form.account_id}
+                                onValueChange={(val) => handleFieldChange('account_id', val)}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select status" />
+                                    <SelectValue placeholder="Select account" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="on-hold">On Hold</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
+                                    {accounts.map((account) => (
+                                        <SelectItem key={account.id} value={account.id}>
+                                            {account.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Status</label>
+                        <Select
+                            value={form.status}
+                            onValueChange={(val) => setForm({ ...form, status: val as 'active' | 'completed' | 'on-hold' | 'proposal' })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="on-hold">On Hold</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="proposal">Proposal</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

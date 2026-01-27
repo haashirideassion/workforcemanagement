@@ -9,9 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SegmentedProgress } from '@/components/ui/segmented-progress';
 import { TrendCard } from '@/components/dashboard/TrendCard';
-import { useDashboardKPIs } from '@/hooks/useDashboard';
+import { useDashboardKPIs, useUpcomingReleases } from '@/hooks/useDashboard';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useProjects } from '@/hooks/useProjects';
+import { EntityResourceDialog } from '@/components/dashboard/EntityResourceDialog';
+import type { Employee } from "@/types";
+import { useState } from 'react';
 
 // Helper to calculate resource distribution metrics
 function calculateResourceDistribution(employees: any[]) {
@@ -51,16 +54,34 @@ export function Dashboard() {
 
     const resourceDistribution = calculateResourceDistribution(employees);
 
-    // Upcoming releases: Projects ending in next 14 days
-    const today = new Date();
-    const twoWeeksLater = new Date();
-    twoWeeksLater.setDate(today.getDate() + 14);
-
-    const upcomingReleases = projects
-        .filter(p => p.end_date && new Date(p.end_date) >= today && new Date(p.end_date) <= twoWeeksLater)
-        .slice(0, 5); // Limit to 5
+    const { data: upcomingReleases = [] } = useUpcomingReleases();
 
     // selectedMetric state removed
+
+    const [resourceDialog, setResourceDialog] = useState<{ open: boolean; title: string; employees: Employee[] }>({
+        open: false,
+        title: '',
+        employees: []
+    });
+
+    const handleResourceClick = (entityName: string, type: 'utilized' | 'partial' | 'available') => {
+        const filtered = employees.filter(e => {
+            const matchesEntity = e.entity?.name === entityName;
+            if (!matchesEntity) return false;
+
+            if (type === 'utilized') return e.utilization >= 80;
+            if (type === 'partial') return e.utilization >= 50 && e.utilization < 80;
+            return e.utilization < 50;
+        });
+
+        let title = `${entityName} - ${type === 'utilized' ? 'Fully Utilized' : type === 'partial' ? 'Partially Utilized' : 'Available'}`;
+
+        setResourceDialog({
+            open: true,
+            title,
+            employees: filtered
+        });
+    };
 
     return (
         <div className="space-y-6">
@@ -148,13 +169,25 @@ export function Dashboard() {
                                             <span className="text-muted-foreground text-xs">• Total: {total}</span>
                                         </div>
                                         <div className="flex gap-2">
-                                            <Badge variant="green">
+                                            <Badge
+                                                variant="green"
+                                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => handleResourceClick(entity.entity, 'utilized')}
+                                            >
                                                 {entity.fullyUtilized} Utilized
                                             </Badge>
-                                            <Badge variant="yellow">
+                                            <Badge
+                                                variant="yellow"
+                                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => handleResourceClick(entity.entity, 'partial')}
+                                            >
                                                 {entity.partiallyUtilized} Partial
                                             </Badge>
-                                            <Badge variant="blue">
+                                            <Badge
+                                                variant="blue"
+                                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                onClick={() => handleResourceClick(entity.entity, 'available')}
+                                            >
                                                 {entity.available} Available
                                             </Badge>
                                         </div>
@@ -174,22 +207,30 @@ export function Dashboard() {
                             <CardTitle>Upcoming Virtual Pool</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
+                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                 {upcomingReleases.length > 0 ? (
-                                    upcomingReleases.map((project) => (
-                                        <div
-                                            key={project.id}
-                                            className="flex items-center justify-between rounded-lg border p-3"
-                                        >
-                                            <div>
-                                                <p className="font-medium text-sm">{project.name}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {project.entity?.name}
-                                                </p>
+                                    upcomingReleases.map((item, index) => {
+                                        const daysLeft = Math.ceil((new Date(item.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                        return (
+                                            <div
+                                                key={index}
+                                                className="flex items-center justify-between rounded-lg border p-3"
+                                            >
+                                                <div
+                                                    className="cursor-pointer hover:bg-muted/50 transition-colors -m-2 p-2 rounded-md flex-1"
+                                                    onClick={() => navigate(`/employees/${item.employeeId}`)}
+                                                >
+                                                    <p className="font-medium text-sm hover:text-brand-600 hover:underline">{item.employee}</p>
+                                                </div>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <Badge variant="secondary" className="text-xs">{item.endDate}</Badge>
+                                                    <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                                        {daysLeft} days left
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <Badge variant="secondary" className="text-xs">{project.end_date}</Badge>
-                                        </div>
-                                    ))
+                                        );
+                                    })
                                 ) : (
                                     <p className="text-sm text-muted-foreground">No upcoming availability</p>
                                 )}
@@ -203,10 +244,13 @@ export function Dashboard() {
                             <CardTitle>Accounts Metrics</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
+                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                 {(accountMetrics || []).slice(0, 5).map((account) => ( // Data might be undefined initially
                                     <div key={account.id} className="flex items-center justify-between py-1">
-                                        <span className="font-medium text-sm">{account.name}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm">{account.name}</span>
+                                            <span className="text-xs text-muted-foreground">• Total: {account.totalCount}</span>
+                                        </div>
                                         <div className="flex items-center gap-1">
                                             {account.headcountChange !== 0 && (
                                                 <span className={account.headcountChange > 0 ? "text-green-500" : "text-red-500"}>
@@ -214,7 +258,7 @@ export function Dashboard() {
                                                 </span>
                                             )}
                                             <span className={`text - sm font - medium ${account.headcountChange > 0 ? "text-green-600" :
-                                                    account.headcountChange < 0 ? "text-red-600" : "text-muted-foreground"
+                                                account.headcountChange < 0 ? "text-red-600" : "text-muted-foreground"
                                                 } `}>
                                                 {account.headcountChange > 0 ? `+ ${account.headcountChange} ` : account.headcountChange}
                                             </span>
@@ -301,9 +345,16 @@ export function Dashboard() {
                                                 {project.entity?.name}
                                             </p>
                                         </div>
-                                        <Badge variant="outline" className="text-xs">
-                                            {project.utilization?.length || 0} Members
-                                        </Badge>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <Badge variant="outline" className="text-xs">
+                                                {project.utilization?.length || 0} Members
+                                            </Badge>
+                                            {project.end_date && (
+                                                <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                                    {Math.ceil((new Date(project.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             ) : (
@@ -313,6 +364,13 @@ export function Dashboard() {
                     </CardContent>
                 </Card>
             </div>
+
+            <EntityResourceDialog
+                open={resourceDialog.open}
+                onOpenChange={(open) => setResourceDialog(prev => ({ ...prev, open }))}
+                title={resourceDialog.title}
+                employees={resourceDialog.employees}
+            />
         </div >
     );
 }
