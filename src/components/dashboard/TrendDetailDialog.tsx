@@ -75,7 +75,7 @@ export function TrendDetailDialog({
                                 <YAxis />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                                    formatter={(val: number) => [val, title]}
+                                    formatter={(value: number | undefined) => [value || 0, title]}
                                 />
                                 <Area
                                     type="monotone"

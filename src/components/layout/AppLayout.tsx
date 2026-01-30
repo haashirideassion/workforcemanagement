@@ -18,7 +18,6 @@ import {
     SidebarFooter,
     SidebarGroup,
     SidebarGroupContent,
-    SidebarGroupLabel,
     SidebarHeader,
     SidebarInset,
     SidebarMenu,
@@ -32,7 +31,6 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from 'sonner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -78,7 +76,6 @@ export function AppLayout() {
 
     const userEmail = user?.email || 'user@example.com';
     const userName = user?.user_metadata?.full_name || userEmail.split('@')[0];
-    const initials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
     return (
         <SidebarProvider>

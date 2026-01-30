@@ -68,6 +68,10 @@ export function Accounts() {
 
     const { data: accounts = [], isLoading } = useAccounts();
 
+    if (isLoading) {
+        return <div className="p-8 text-center">Loading accounts...</div>;
+    }
+
     // Form state for new account is handled inside the dialog now
 
     const filteredAccounts = accounts.filter((account) => {

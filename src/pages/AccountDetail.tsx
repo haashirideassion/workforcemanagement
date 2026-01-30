@@ -1,12 +1,8 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
     ArrowLeft,
-    Briefcase,
     Users,
-    ChartBar,
     Warning,
-    CheckCircle,
-    Clock,
     DotsThree,
     PencilSimple,
     Archive,
@@ -93,7 +89,6 @@ function getStatusBadge(status: string) {
 
 export function AccountDetail() {
     const navigate = useNavigate();
-    const { id } = useParams();
 
     // In a real app, fetch data based on ID
     // In a real app, fetch data based on ID

@@ -113,7 +113,7 @@ const SegmentedProgress = React.forwardRef<HTMLDivElement, SegmentedProgressProp
             }
         };
 
-        const getGlowStyle = (index: number, colorClass: string) => {
+        const getGlowStyle = (colorClass: string) => {
             if (!showGlow || colorClass.includes('gray')) return {};
             // Extract color or use map
             const glowColor = GLOW_colors[colorClass] || 'rgba(59, 130, 246, 0.5)'; // Default blue glow
@@ -154,7 +154,7 @@ const SegmentedProgress = React.forwardRef<HTMLDivElement, SegmentedProgressProp
                                 )}
                                 style={{
                                     width: `${config.segmentWidth}px`,
-                                    ...getGlowStyle(index, colorClass)
+                                    ...getGlowStyle(colorClass)
                                 }}
                             />
                         );

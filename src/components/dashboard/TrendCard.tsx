@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Area, AreaChart, ResponsiveContainer, YAxis } from 'recharts';
+import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { ArrowUp, ArrowDown } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
