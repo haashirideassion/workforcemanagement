@@ -31,6 +31,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AccountFormDialog } from '@/components/accounts/AccountFormDialog';
+import { useState } from 'react';
+import type { Account } from '@/types';
 
 // Mock Data
 const mockAccount = {
@@ -68,8 +71,9 @@ const mockRoleBreakdown = [
 ];
 
 const mockRisks = [
-    { id: "r1", message: "Mobile App Redesign is understaffed by 1 Mobile Dev", severity: "high" },
-    { id: "r2", message: "Mike Johnson (QA) utilization ending in 14 days", severity: "medium" },
+    { id: "r1", message: "Mobile App Redesign has 0 active resources", severity: "high" },
+    { id: "r2", message: "2 Employees rolling off to virtual pool in 10 days", severity: "medium" },
+    { id: "r3", message: "Internal Dashboard utilization dropping below 50%", severity: "medium" },
 ];
 
 function getStatusBadge(status: string) {
@@ -92,7 +96,14 @@ export function AccountDetail() {
     const { id } = useParams();
 
     // In a real app, fetch data based on ID
+    // In a real app, fetch data based on ID
     const account = mockAccount;
+    const [formOpen, setFormOpen] = useState(false);
+
+    const handleEditSubmit = (data: Partial<Account>) => {
+        console.log('Updating account:', data);
+        setFormOpen(false);
+    };
 
     return (
         <div className="space-y-6">
@@ -113,9 +124,6 @@ export function AccountDetail() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => navigate('/teams')}>
-                        <Briefcase size={16} className="mr-2" /> View Projects
-                    </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="icon">
@@ -123,7 +131,7 @@ export function AccountDetail() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setFormOpen(true)}>
                                 <PencilSimple size={16} className="mr-2" /> Edit Account
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive">
@@ -199,7 +207,7 @@ export function AccountDetail() {
                                     <TableRow>
                                         <TableHead>Project Name</TableHead>
                                         <TableHead>Timeline</TableHead>
-                                        <TableHead>Staffing</TableHead>
+                                        <TableHead>Employees</TableHead>
                                         <TableHead>Utilization</TableHead>
                                         <TableHead>Status</TableHead>
                                     </TableRow>
@@ -210,9 +218,10 @@ export function AccountDetail() {
                                             <TableCell className="font-medium">{project.name}</TableCell>
                                             <TableCell className="text-muted-foreground text-sm">{project.start} - {project.end}</TableCell>
                                             <TableCell>
-                                                <span className={project.assigned < project.required ? "text-yellow-500 font-medium" : ""}>
-                                                    {project.assigned}/{project.required}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <Users size={16} className="text-muted-foreground" />
+                                                    <span>{project.assigned}</span>
+                                                </div>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
@@ -325,22 +334,16 @@ export function AccountDetail() {
                         </CardContent>
                     </Card>
 
-                    {/* Quick Actions (Optional helper) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm">Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start">
-                                <Clock size={16} className="mr-2" /> Extend Utilizations
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start">
-                                <Users size={16} className="mr-2" /> Request Staffing
-                            </Button>
-                        </CardContent>
-                    </Card>
+                    {/* Quick Actions Removed */}
                 </div>
             </div>
+
+            <AccountFormDialog
+                open={formOpen}
+                onOpenChange={setFormOpen}
+                account={account as unknown as Account}
+                onSubmit={handleEditSubmit}
+            />
         </div>
     );
 }

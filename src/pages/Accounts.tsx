@@ -5,7 +5,6 @@ import {
     Plus,
     Funnel,
     DotsThree,
-    Buildings,
     Briefcase,
     User,
 } from "@phosphor-icons/react";
@@ -36,18 +35,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { useAccounts } from '@/hooks/useAccounts';
 import type { Account } from '@/types';
-import { Loading } from '@/components/ui/loading';
+import { AccountFormDialog } from '@/components/accounts/AccountFormDialog';
 
 // Status badge component
 function getStatusBadge(status: Account['status']) {
@@ -74,16 +64,11 @@ export function Accounts() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [zoneFilter, setZoneFilter] = useState("all");
     const [formOpen, setFormOpen] = useState(false);
+    const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
     const { data: accounts = [], isLoading } = useAccounts();
 
-    // Form state for new account
-    const [newAccount, setNewAccount] = useState({
-        name: '',
-        email: '',
-        entity: 'ITS' as Account['entity'],
-        zone: 'USA' as Account['zone'],
-    });
+    // Form state for new account is handled inside the dialog now
 
     const filteredAccounts = accounts.filter((account) => {
         const matchesSearch =
@@ -95,11 +80,24 @@ export function Accounts() {
         return matchesSearch && matchesEntity && matchesStatus && matchesZone;
     });
 
-    const handleAddAccount = () => {
-        // In production, this would call an API
-        console.log('Adding account:', newAccount);
+    const handleFormSubmit = (data: Partial<Account>) => {
+        if (editingAccount) {
+            console.log('Updating account:', { ...editingAccount, ...data });
+        } else {
+            console.log('Adding account:', data);
+        }
         setFormOpen(false);
-        setNewAccount({ name: '', email: '', entity: 'ITS', zone: 'USA' });
+        setEditingAccount(null);
+    };
+
+    const handleEditClick = (account: Account) => {
+        setEditingAccount(account);
+        setFormOpen(true);
+    };
+
+    const handleAddClick = () => {
+        setEditingAccount(null);
+        setFormOpen(true);
     };
 
     return (
@@ -114,7 +112,7 @@ export function Accounts() {
                 </div>
                 <Button
                     className="bg-brand-600 hover:bg-brand-700 text-white"
-                    onClick={() => setFormOpen(true)}
+                    onClick={handleAddClick}
                 >
                     <Plus size={16} className="mr-2" />
                     Add Account
@@ -265,7 +263,12 @@ export function Accounts() {
                                                 <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
                                                     View Projects
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenuItem
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditClick(account);
+                                                    }}
+                                                >
                                                     Edit Account
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
@@ -284,88 +287,13 @@ export function Accounts() {
                 </CardContent>
             </Card>
 
-            {/* Add Account Dialog */}
-            <Dialog open={formOpen} onOpenChange={setFormOpen}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Add New Account</DialogTitle>
-                        <DialogDescription>
-                            Create a new client account to manage projects and utilizations.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="name">Account Name</Label>
-                            <Input
-                                id="name"
-                                placeholder="e.g., Acme Corporation"
-                                value={newAccount.name}
-                                onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Client Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="contact@company.com"
-                                value={newAccount.email}
-                                onChange={(e) => setNewAccount({ ...newAccount, email: e.target.value })}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="entity">Entity</Label>
-                            <Select
-                                value={newAccount.entity}
-                                onValueChange={(value) => setNewAccount({ ...newAccount, entity: value as Account['entity'] })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectItem value="ITS">ITS</SelectItem>
-                                        <SelectItem value="IBCC">IBCC</SelectItem>
-                                        <SelectItem value="IITT">IITT</SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="zone">Zone</Label>
-                            <Select
-                                value={newAccount.zone}
-                                onValueChange={(value) => setNewAccount({ ...newAccount, zone: value as Account['zone'] })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectItem value="USA">USA</SelectItem>
-                                        <SelectItem value="Asia">Asia</SelectItem>
-                                        <SelectItem value="EMEA">EMEA</SelectItem>
-                                        <SelectItem value="LatAm">LatAm</SelectItem>
-                                        <SelectItem value="APAC">APAC</SelectItem>
-                                        <SelectItem value="Europe">Europe</SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setFormOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            className="bg-brand-600 hover:bg-brand-700 text-white"
-                            onClick={handleAddAccount}
-                        >
-                            Add Account
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+            {/* Account Form Dialog */}
+            <AccountFormDialog
+                open={formOpen}
+                onOpenChange={setFormOpen}
+                account={editingAccount}
+                onSubmit={handleFormSubmit}
+            />
+        </div >
     );
 }

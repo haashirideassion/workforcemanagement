@@ -7,6 +7,7 @@ const mockProjects: (Project & { teamSize: number; progress: number })[] = [
         id: '1',
         name: 'Project Alpha', // Active
         entity_id: '1',
+        account_id: '1', // Acme Corporation
         start_date: '2025-01-01',
         end_date: '2026-03-31',
         status: 'active',
@@ -66,6 +67,7 @@ const mockProjects: (Project & { teamSize: number; progress: number })[] = [
         id: '2',
         name: 'Project Beta', // Active
         entity_id: '2',
+        account_id: '2', // TechStart Inc
         start_date: '2025-02-01',
         end_date: '2026-02-28',
         status: 'active',
@@ -147,6 +149,7 @@ const mockProjects: (Project & { teamSize: number; progress: number })[] = [
         id: '3',
         name: 'Project Gamma', // On Hold
         entity_id: '3',
+        account_id: '3', // Global Finance Ltd
         start_date: '2024-11-01',
         end_date: '2026-04-30',
         status: 'on-hold',
@@ -184,6 +187,7 @@ const mockProjects: (Project & { teamSize: number; progress: number })[] = [
         id: '4',
         name: 'Project Delta', // Completed
         entity_id: '1',
+        account_id: '7', // CloudNine Systems
         start_date: '2025-01-01',
         end_date: '2025-12-31',
         status: 'completed',
@@ -198,6 +202,7 @@ const mockProjects: (Project & { teamSize: number; progress: number })[] = [
         id: '5',
         name: 'Project Epsilon', // Proposal (Future)
         entity_id: '2',
+        account_id: '5', // RetailMax
         start_date: '2026-06-01',
         end_date: '2026-12-31',
         status: 'proposal',
@@ -212,6 +217,7 @@ const mockProjects: (Project & { teamSize: number; progress: number })[] = [
         id: '6',
         name: 'Project Zeta', // Active
         entity_id: '3',
+        account_id: '6', // EduLearn Platform
         start_date: '2025-03-01',
         end_date: '2026-06-30',
         status: 'active',
@@ -256,6 +262,20 @@ export function useProjects(filters?: ProjectFilters) {
             await new Promise((resolve) => setTimeout(resolve, 500));
 
             let data = [...mockProjects];
+
+            // Auto-update status based on date
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            data = data.map(p => {
+                if (p.status === 'proposal' && p.start_date) {
+                    const startDate = new Date(p.start_date);
+                    if (startDate <= today) {
+                        return { ...p, status: 'active' };
+                    }
+                }
+                return p;
+            });
 
             if (filters?.entity) {
                 data = data.filter(p => p.entity_id === filters.entity);

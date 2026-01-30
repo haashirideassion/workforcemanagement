@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import {
-    Users, Briefcase, ChartBar, Bell, Buildings,
+    Users, Briefcase, ChartBar,
     CaretUp,
     CaretDown,
     ArrowRight,
@@ -47,10 +47,7 @@ export function Dashboard() {
 
     const accountMetrics = kpis?.accountMetrics;
 
-    const activeProjects = projects.filter((p) => p.status === 'active').length;
-    // Bench is typically employees with 0 utilization or explicitly marked 'on_bench' (if field exists, otherwise use low util)
-    const benchCount = employees.filter((e) => e.utilization < 10).length;
-
+    const activeProjectsCount = projects.filter((p) => p.status === 'active').length;
 
     const resourceDistribution = calculateResourceDistribution(employees);
 
@@ -118,9 +115,9 @@ export function Dashboard() {
                     value={kpis?.activeProjects.value || 0}
                     icon={<Briefcase size={18} weight="fill" />}
                     iconBgColor="bg-purple-100 text-purple-700"
-                    trend={activeProjects?.trend || { value: 0, direction: 'neutral', isPositive: true }}
-                    history={activeProjects?.history || []}
-                    onDetailClick={() => navigate('/projects')}
+                    trend={kpis?.activeProjects.trend || { value: 0, direction: 'neutral', isPositive: true }}
+                    history={kpis?.activeProjects.history || []}
+                    onDetailClick={() => navigate('/projects?status=active')}
                 />
                 {/* Alerts Card - Keeping as simple card for now or should we use TrendCard too? 
                     Request said "All TOP tracking cards... Total Employees, Bench %, Active Projects" (3 cards).
@@ -149,129 +146,125 @@ export function Dashboard() {
                 */}
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-
-
+            {/* Main Content Grid */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {/* Entity-wise Resource Distribution */}
-                <Card className="col-span-1">
+                <Card className="h-full">
                     <CardHeader>
                         <CardTitle>Entity-wise Resource Distribution</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
                         {resourceDistribution.map((entity) => {
                             const total = entity.fullyUtilized + entity.partiallyUtilized + entity.available;
-                            const utilizedPct = (entity.fullyUtilized / total) * 100;
+                            const utilizedPct = total > 0 ? (entity.fullyUtilized / total) * 100 : 0;
                             return (
-                                <div key={entity.entity} className="space-y-2">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">{entity.entity}</span>
-                                            <span className="text-muted-foreground text-xs">• Total: {total}</span>
+                                <div key={entity.entity} className="space-y-3">
+                                    <div className="flex flex-col gap-2 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-semibold text-base">{entity.entity}</span>
+                                            <span className="text-muted-foreground text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">Total: {total}</span>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap gap-1.5">
                                             <Badge
                                                 variant="green"
-                                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                className="cursor-pointer hover:opacity-80 transition-opacity px-2 py-0.5 text-[10px]"
                                                 onClick={() => handleResourceClick(entity.entity, 'utilized')}
                                             >
                                                 {entity.fullyUtilized} Utilized
                                             </Badge>
                                             <Badge
                                                 variant="yellow"
-                                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                className="cursor-pointer hover:opacity-80 transition-opacity px-2 py-0.5 text-[10px]"
                                                 onClick={() => handleResourceClick(entity.entity, 'partial')}
                                             >
                                                 {entity.partiallyUtilized} Partial
                                             </Badge>
                                             <Badge
                                                 variant="blue"
-                                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                                                className="cursor-pointer hover:opacity-80 transition-opacity px-2 py-0.5 text-[10px]"
                                                 onClick={() => handleResourceClick(entity.entity, 'available')}
                                             >
                                                 {entity.available} Available
                                             </Badge>
                                         </div>
                                     </div>
-                                    <SegmentedProgress value={utilizedPct} size="sm" />
+                                    <SegmentedProgress value={utilizedPct} size="md" className="h-2" />
                                 </div>
                             );
                         })}
                     </CardContent>
                 </Card>
 
-                {/* Upcoming Virtual Pool (Projects ending soon) */}
-                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
-                    {/* Upcoming Virtual Pool (Existing) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Upcoming Virtual Pool</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                {upcomingReleases.length > 0 ? (
-                                    upcomingReleases.map((item, index) => {
-                                        const daysLeft = Math.ceil((new Date(item.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                                        return (
+                {/* Upcoming Virtual Pool */}
+                <Card className="h-full">
+                    <CardHeader>
+                        <CardTitle>Upcoming Virtual Pool</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                            {upcomingReleases.length > 0 ? (
+                                upcomingReleases.map((item, index) => {
+                                    const daysLeft = Math.ceil((new Date(item.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="flex items-center justify-between rounded-lg border p-3 hover:shadow-sm transition-all"
+                                        >
                                             <div
-                                                key={index}
-                                                className="flex items-center justify-between rounded-lg border p-3"
+                                                className="cursor-pointer hover:bg-muted/50 transition-colors -m-2 p-2 rounded-md flex-1"
+                                                onClick={() => navigate(`/employees/${item.employeeId}`)}
                                             >
-                                                <div
-                                                    className="cursor-pointer hover:bg-muted/50 transition-colors -m-2 p-2 rounded-md flex-1"
-                                                    onClick={() => navigate(`/employees/${item.employeeId}`)}
-                                                >
-                                                    <p className="font-medium text-sm hover:text-brand-600 hover:underline">{item.employee}</p>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-1">
-                                                    <Badge variant="secondary" className="text-xs">{item.endDate}</Badge>
-                                                    <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                                                        {daysLeft} days left
-                                                    </span>
-                                                </div>
+                                                <p className="font-medium text-sm hover:text-brand-600 hover:underline">{item.employee}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{item.endDate}</p>
                                             </div>
-                                        );
-                                    })
-                                ) : (
-                                    <p className="text-sm text-muted-foreground">No upcoming availability</p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Accounts Metrics (New) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Accounts Metrics</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                {(accountMetrics || []).slice(0, 5).map((account) => ( // Data might be undefined initially
-                                    <div key={account.id} className="flex items-center justify-between py-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium text-sm">{account.name}</span>
-                                            <span className="text-xs text-muted-foreground">• Total: {account.totalCount}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            {account.headcountChange !== 0 && (
-                                                <span className={account.headcountChange > 0 ? "text-green-500" : "text-red-500"}>
-                                                    {account.headcountChange > 0 ? <CaretUp weight="bold" size={12} /> : <CaretDown weight="bold" size={12} />}
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className={`text-[10px] font-medium px-2 py-1 rounded-full ${daysLeft <= 5 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                    {daysLeft} days left
                                                 </span>
-                                            )}
-                                            <span className={`text - sm font - medium ${account.headcountChange > 0 ? "text-green-600" :
-                                                account.headcountChange < 0 ? "text-red-600" : "text-muted-foreground"
-                                                } `}>
-                                                {account.headcountChange > 0 ? `+ ${account.headcountChange} ` : account.headcountChange}
-                                            </span>
+                                            </div>
                                         </div>
+                                    );
+                                })
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">No upcoming availability</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Accounts Metrics */}
+                <Card className="h-full">
+                    <CardHeader>
+                        <CardTitle>Accounts Metrics</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                            {(accountMetrics || []).slice(0, 5).map((account) => (
+                                <div key={account.id} className="flex items-center justify-between py-2 border-b last:border-0 border-dashed border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-medium text-sm">{account.name}</span>
+                                        <span className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded">Total: {account.totalCount}</span>
                                     </div>
-                                ))}
-                                {(!accountMetrics || accountMetrics.length === 0) && (
-                                    <p className="text-sm text-muted-foreground">No recent activity</p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                                    <div className="flex items-center gap-1.5">
+                                        {account.headcountChange !== 0 && (
+                                            <span className={account.headcountChange > 0 ? "text-green-500" : "text-red-500"}>
+                                                {account.headcountChange > 0 ? <CaretUp weight="bold" size={12} /> : <CaretDown weight="bold" size={12} />}
+                                            </span>
+                                        )}
+                                        <span className={`text-sm font-medium ${account.headcountChange > 0 ? "text-green-600" :
+                                            account.headcountChange < 0 ? "text-red-600" : "text-muted-foreground"
+                                            }`}>
+                                            {account.headcountChange > 0 ? `+${account.headcountChange}` : account.headcountChange}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!accountMetrics || accountMetrics.length === 0) && (
+                                <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Bottom Row: Available Talent & Ongoing Projects */}
@@ -279,7 +272,7 @@ export function Dashboard() {
                 {/* Available Talent */}
                 <Card className="col-span-1">
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle>Available Talents</CardTitle>
+                        <CardTitle>Available Employees</CardTitle>
                         <Link
                             to="/employees"
                             className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 hover:underline"
@@ -314,7 +307,7 @@ export function Dashboard() {
                                         </div>
                                     ))
                             ) : (
-                                <p className="text-sm text-muted-foreground">No available talent found</p>
+                                <p className="text-sm text-muted-foreground">No available Employee found</p>
                             )}
                         </div>
                     </CardContent>
@@ -333,7 +326,7 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                            {activeProjects > 0 ? (
+                            {activeProjectsCount > 0 ? (
                                 projects.filter(p => p.status === 'active').map((project) => (
                                     <div
                                         key={project.id}

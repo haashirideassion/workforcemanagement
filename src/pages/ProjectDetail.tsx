@@ -14,12 +14,15 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useProject } from '@/hooks/useProjects';
+import { useEmployees } from '@/hooks/useEmployees';
 import { useCreateUtilization, useDeleteUtilization, useUpdateUtilization } from '@/hooks/useUtilization';
 import type { Utilization } from '@/types';
 import { UtilizationDialog } from '@/components/projects/UtilizationDialog';
 import type { UtilizationFormData } from '@/components/projects/UtilizationDialog';
 import { Loading } from '@/components/ui/loading';
 import { toast } from 'sonner';
+import { useUpdateProject } from '@/hooks/useProjects';
+import { ProjectFormDialog } from '@/components/projects/ProjectFormDialog';
 
 function getStatusBadge(status: string) {
     switch (status) {
@@ -38,9 +41,12 @@ export function ProjectDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [utilizationOpen, setUtilizationOpen] = useState(false);
+    const [projectDialogOpen, setProjectDialogOpen] = useState(false);
     const [editingUtilization, setEditingUtilization] = useState<Utilization | null>(null);
 
     const { data: project, isLoading, error } = useProject(id || '');
+    const { data: allEmployees = [] } = useEmployees();
+    const updateProject = useUpdateProject();
     const createUtilization = useCreateUtilization();
     const updateUtilization = useUpdateUtilization();
     const deleteUtilization = useDeleteUtilization();
@@ -68,6 +74,18 @@ export function ProjectDetail() {
                 }
             });
         }
+    };
+
+    const handleProjectUpdate = (values: any) => {
+        updateProject.mutate({ id: project?.id || '', ...values }, {
+            onSuccess: () => {
+                setProjectDialogOpen(false);
+                toast.success('Project updated successfully');
+            },
+            onError: (error: any) => {
+                toast.error(`Failed to update project: ${error.message}`);
+            }
+        });
     };
 
     const handleEditMember = (utilization: Utilization, e: React.MouseEvent) => {
@@ -118,6 +136,15 @@ export function ProjectDetail() {
     const totalUtilization = project.utilization?.reduce((sum, a) => sum + a.utilization_percent, 0) || 0;
     const teamSize = project.utilization?.length || 0;
 
+    // Get available employees from the same entity who are not fully utilized
+    const assignedEmployeeIds = new Set(project.utilization?.map(u => u.employee_id) || []);
+    const availableEmployees = allEmployees.filter(emp =>
+        emp.entity_id === project.entity_id &&
+        !assignedEmployeeIds.has(emp.id) &&
+        (emp.utilization || 0) < 100
+    );
+
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -126,8 +153,21 @@ export function ProjectDetail() {
                     <ArrowLeft size={20} />
                 </Button>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold">{project.name}</h1>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold">{project.name}</h1>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-brand-600"
+                            onClick={() => setProjectDialogOpen(true)}
+                        >
+                            <Pencil size={18} />
+                        </Button>
+                    </div>
+                    {project.description && (
+                        <p className="text-sm text-muted-foreground mt-1 max-w-3xl">{project.description}</p>
+                    )}
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
                         <span className="flex items-center gap-1">
                             <Buildings size={14} />
                             {project.entity?.name || 'N/A'}
@@ -199,10 +239,10 @@ export function ProjectDetail() {
                                 <TableRow>
                                     <TableHead>Employee</TableHead>
                                     <TableHead>Role</TableHead>
-                                    <TableHead>Specialization</TableHead>
                                     <TableHead>Utilization</TableHead>
-                                    <TableHead>Start Date</TableHead>
+                                    <TableHead>Type</TableHead>
                                     <TableHead>End Date</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead className="w-[50px]"></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -217,19 +257,14 @@ export function ProjectDetail() {
                                             <div>
                                                 <p className="font-medium">{utilization.employee?.name}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {utilization.employee?.email}
+                                                    {utilization.employee?.role || 'N/A'} • {utilization.employee?.experience || 0} YOE
                                                 </p>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <span className="text-sm">
-                                                {utilization.employee?.role || 'N/A'}
+                                            <span className="text-sm font-medium">
+                                                {utilization.role || 'N/A'}
                                             </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">
-                                                {utilization.employee?.specialization || 'N/A'}
-                                            </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
@@ -237,8 +272,15 @@ export function ProjectDetail() {
                                                 <span>{utilization.utilization_percent}%</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell>{utilization.start_date}</TableCell>
-                                        <TableCell>{utilization.end_date || 'Ongoing'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">
+                                                {utilization.type || 'Billable'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{utilization.end_date || 'Dec 2024'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="green">Active</Badge>
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1">
                                                 <Button
@@ -271,10 +313,58 @@ export function ProjectDetail() {
                 </CardContent>
             </Card>
 
+            {/* Available Employees */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Available Employees</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                        Employees from {project.entity?.name} who can be assigned to this project
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    {availableEmployees.length > 0 ? (
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                            {availableEmployees.map((employee) => (
+                                <div
+                                    key={employee.id}
+                                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                                    onClick={() => navigate(`/employees/${employee.id}`)}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold">
+                                            {employee.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-sm">{employee.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {employee.role || 'Employee'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <Badge variant={
+                                            (employee.utilization || 0) >= 80 ? 'yellow' :
+                                                (employee.utilization || 0) >= 50 ? 'blue' : 'green'
+                                        }>
+                                            {employee.utilization || 0}% Utilized
+                                        </Badge>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                            No available employees from {project.entity?.name}
+                        </p>
+                    )}
+                </CardContent>
+            </Card>
+
             <UtilizationDialog
                 open={utilizationOpen}
                 onOpenChange={setUtilizationOpen}
                 preSelectedProjectId={id}
+                employees={allEmployees}
                 utilization={editingUtilization ? {
                     id: editingUtilization.id,
                     employee_id: editingUtilization.employee_id,
@@ -282,9 +372,21 @@ export function ProjectDetail() {
                     utilization_percent: editingUtilization.utilization_percent,
                     start_date: editingUtilization.start_date,
                     end_date: editingUtilization.end_date || '',
+                    role: editingUtilization.role || '',
+                    type: editingUtilization.type || 'Billable',
                 } : undefined}
                 onSubmit={handleFormSubmit}
                 isLoading={createUtilization.isPending || updateUtilization.isPending}
+            />
+
+            <ProjectFormDialog
+                open={projectDialogOpen}
+                onOpenChange={setProjectDialogOpen}
+                project={project}
+                entities={[project.entity!]} // Simplified for now, in real app pass all entities
+                accounts={[]} // Simplified for now
+                onSubmit={handleProjectUpdate}
+                isLoading={updateProject.isPending}
             />
         </div>
     );

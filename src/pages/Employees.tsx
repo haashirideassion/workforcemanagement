@@ -5,11 +5,10 @@ import {
   Plus,
   Funnel,
   DotsThree,
-  X,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { EmployeeFilterSheet, type FilterState } from "@/components/employees/EmployeeFilterSheet";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmployeeFilterSheet } from "@/components/employees/EmployeeFilterSheet";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -311,9 +310,11 @@ export function Employees() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>ID</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Entity</TableHead>
                 <TableHead>Type</TableHead>
-                <TableHead>Project</TableHead>
+                <TableHead>Projects</TableHead>
                 <TableHead>Utilization</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
@@ -328,6 +329,11 @@ export function Employees() {
                       onClick={() => navigate(`/employees/${employee.id}`)}
                     >
                       <TableCell>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {employee.employee_code || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
                         <div>
                           <p className="font-medium">{employee.name}</p>
                           <p className="text-sm text-muted-foreground">
@@ -336,32 +342,36 @@ export function Employees() {
                         </div>
 
                       </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-normal">
+                          {employee.entity?.name || '-'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="capitalize">
                         {employee.employment_type}
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-[200px] truncate">
+                        <div className="flex flex-wrap gap-1 max-w-[250px]">
                           {(() => {
                             const activeProjects = employee.utilization_data?.filter(u =>
                               (!u.end_date || u.end_date >= new Date().toISOString().split('T')[0]) &&
                               u.start_date <= new Date().toISOString().split('T')[0]
                             ) || [];
 
-                            if (activeProjects.length === 0) return '-';
+                            if (activeProjects.length === 0) return <span className="text-muted-foreground">-</span>;
 
-                            return activeProjects.map((u, i) => (
-                              <span key={u.id}>
-                                <span
-                                  className="hover:underline cursor-pointer text-brand-600 dark:text-brand-400 font-medium"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (u.project?.id) navigate(`/projects/${u.project.id}`);
-                                  }}
-                                >
-                                  {u.project?.name}
-                                </span>
-                                {i < activeProjects.length - 1 && ", "}
-                              </span>
+                            return activeProjects.map((u) => (
+                              <Badge
+                                key={u.id}
+                                variant="secondary"
+                                className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors font-normal text-xs px-2 py-0.5"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (u.project?.id) navigate(`/projects/${u.project.id}`);
+                                }}
+                              >
+                                {u.project?.name}
+                              </Badge>
                             ));
                           })()}
                         </div>

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Funnel, MagnifyingGlass } from '@phosphor-icons/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ import { useEntities } from '@/hooks/useEntities';
 import { Loading } from '@/components/ui/loading';
 import { toast } from 'sonner';
 import { useAccounts } from '@/hooks/useAccounts';
+import { shouldUpdateProjectStatus } from '@/lib/projectStatusUtils';
 
 function getStatusBadge(status: string) {
     switch (status) {
@@ -43,23 +44,22 @@ function getStatusBadge(status: string) {
 
 export function Projects() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [formOpen, setFormOpen] = useState(false);
     const [editingProject, setEditingProject] = useState<Project | null>(null);
 
     // Filters
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all');
     const [entityFilter, setEntityFilter] = useState<string>('all');
+    const [accountFilter, setAccountFilter] = useState<string>('all');
     const [fromDate, setFromDate] = useState(''); // YYYY-MM-DD
     const [toDate, setToDate] = useState(''); // YYYY-MM-DD
 
     const isSpecialStatus = ['near-completion', 'overdue', 'not-started'].includes(statusFilter);
 
-    const { data: projects = [], isLoading } = useProjects({
-        search,
-        status: (statusFilter === 'all' || isSpecialStatus) ? undefined : statusFilter as any,
-        entity: entityFilter === 'all' ? undefined : entityFilter
-    });
+    // Fetch all projects without server-side filtering for client-side performance
+    const { data: projects = [], isLoading } = useProjects();
 
     const { data: entities = [] } = useEntities();
     const { data: accounts = [] } = useAccounts();
@@ -67,8 +67,49 @@ export function Projects() {
     const createProject = useCreateProject();
     const updateProject = useUpdateProject();
 
-    // Client-side filtering
+    // Automatic status management: Check and update proposal projects
+    useEffect(() => {
+        if (projects.length > 0) {
+            projects.forEach(project => {
+                const { shouldUpdate, newStatus } = shouldUpdateProjectStatus(project);
+                if (shouldUpdate && newStatus) {
+                    // Silently update the project status
+                    updateProject.mutate(
+                        { id: project.id, status: newStatus },
+                        {
+                            onSuccess: () => {
+                                console.log(`Project "${project.name}" automatically updated to ${newStatus}`);
+                            }
+                        }
+                    );
+                }
+            });
+        }
+    }, [projects.length]); // Only run when projects are loaded
+
+
+    // Client-side filtering for better performance
     const filteredProjects = projects.filter(project => {
+        // Search filter
+        if (search && !project.name.toLowerCase().includes(search.toLowerCase())) {
+            return false;
+        }
+
+        // Entity filter
+        if (entityFilter !== 'all' && project.entity_id !== entityFilter) {
+            return false;
+        }
+
+        // Account filter
+        if (accountFilter !== 'all' && project.account_id !== accountFilter) {
+            return false;
+        }
+
+        // Status filter (basic)
+        if (statusFilter !== 'all' && !isSpecialStatus && project.status !== statusFilter) {
+            return false;
+        }
+
         // Status Filtering (Special Cases)
         if (statusFilter === 'near-completion') {
             let progress = 0;
@@ -98,27 +139,31 @@ export function Projects() {
             return project.start_date > today;
         }
 
-        if (!fromDate && !toDate) return true;
+        // Date range filter
+        if (fromDate || toDate) {
+            if (project.start_date && project.end_date) {
+                const projStart = project.start_date;
+                const projEnd = project.end_date;
 
-        if (project.start_date && project.end_date) {
-            const projStart = project.start_date;
-            const projEnd = project.end_date;
-
-            // Check if project overlaps with the selected range
-            // If only From Date is selected: Show projects ending after filtered From Date
-            if (fromDate && !toDate) {
-                return projEnd >= fromDate;
-            }
-            // If only To Date is selected: Show projects starting before filtered To Date
-            if (!fromDate && toDate) {
-                return projStart <= toDate;
-            }
-            // If both selected: Show overlap
-            if (fromDate && toDate) {
-                return projStart <= toDate && projEnd >= fromDate;
+                // Check if project overlaps with the selected range
+                // If only From Date is selected: Show projects ending after filtered From Date
+                if (fromDate && !toDate) {
+                    return projEnd >= fromDate;
+                }
+                // If only To Date is selected: Show projects starting before filtered To Date
+                if (!fromDate && toDate) {
+                    return projStart <= toDate;
+                }
+                // If both selected: Show overlap
+                if (fromDate && toDate) {
+                    return projStart <= toDate && projEnd >= fromDate;
+                }
+            } else {
+                return false;
             }
         }
-        return false;
+
+        return true;
     });
 
     const handleFormSubmit = (values: ProjectFormData) => {
@@ -199,14 +244,29 @@ export function Projects() {
                         </div>
                         <Select value={entityFilter} onValueChange={setEntityFilter}>
                             <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="All Entities" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem value="all">All Entities</SelectItem>
+                                    {entities.map((entity) => (
+                                        <SelectItem key={entity.id} value={entity.id}>
+                                            {entity.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                        <Select value={accountFilter} onValueChange={setAccountFilter}>
+                            <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="All Accounts" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">All Accounts</SelectItem>
-                                    {entities.map((entity) => (
-                                        <SelectItem key={entity.id} value={entity.id}>
-                                            {entity.name}
+                                    {accounts.map((account) => (
+                                        <SelectItem key={account.id} value={account.id}>
+                                            {account.name}
                                         </SelectItem>
                                     ))}
                                 </SelectGroup>
@@ -262,6 +322,7 @@ export function Projects() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {filteredProjects.map((project) => {
                     const teamSize = project.utilization?.length || (project as any).teamSize || 0;
+                    const accountName = accounts.find(acc => acc.id === project.account_id)?.name || 'N/A';
 
                     // Calculate progress
                     let progress = 0;
@@ -277,12 +338,15 @@ export function Projects() {
                     return (
                         <Card
                             key={project.id}
-                            className="cursor-pointer transition-shadow hover:shadow-md"
+                            className="cursor-pointer transition-all hover:shadow-md"
                             onClick={() => navigate(`/projects/${project.id}`)}
                         >
                             <CardHeader className="pb-2">
                                 <div className="flex items-center justify-between">
-                                    <Badge variant="outline">{project.entity?.name}</Badge>
+                                    <div className="flex flex-col gap-1">
+                                        <Badge variant="outline">{project.entity?.name}</Badge>
+                                        <span className="text-xs text-muted-foreground">{accountName}</span>
+                                    </div>
                                     {getStatusBadge(project.status)}
                                 </div>
                                 <div className="flex items-center justify-between">

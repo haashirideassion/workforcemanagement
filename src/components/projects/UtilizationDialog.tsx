@@ -24,6 +24,8 @@ export interface UtilizationFormData {
     utilization_percent: number;
     start_date: string;
     end_date: string;
+    role: string;
+    type: 'Billable' | 'Shared' | 'Shadow' | 'Training' | 'Non-Billable';
 }
 
 interface UtilizationDialogProps {
@@ -55,8 +57,12 @@ export function UtilizationDialog({
         utilization_percent: 50,
         start_date: new Date().toISOString().split('T')[0],
         end_date: '',
+        role: '',
+        type: 'Billable',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const selectedEmployee = employees.find(e => e.id === form.employee_id);
 
     useEffect(() => {
         if (open) {
@@ -68,6 +74,8 @@ export function UtilizationDialog({
                     utilization_percent: utilization.utilization_percent,
                     start_date: utilization.start_date,
                     end_date: utilization.end_date || '',
+                    role: utilization.role || '',
+                    type: utilization.type as any || 'Billable',
                 });
             } else {
                 setForm({
@@ -76,6 +84,8 @@ export function UtilizationDialog({
                     utilization_percent: 50,
                     start_date: new Date().toISOString().split('T')[0],
                     end_date: '',
+                    role: '',
+                    type: 'Billable',
                 });
             }
             setErrors({});
@@ -107,6 +117,9 @@ export function UtilizationDialog({
         if (!form.start_date) {
             newErrors.start_date = 'Start date is required';
         }
+        if (!form.role) {
+            newErrors.role = 'Project Role is required';
+        }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -125,6 +138,8 @@ export function UtilizationDialog({
                 utilization_percent: 50,
                 start_date: new Date().toISOString().split('T')[0],
                 end_date: '',
+                role: '',
+                type: 'Billable',
             });
             onOpenChange(false);
         }
@@ -167,6 +182,15 @@ export function UtilizationDialog({
                         </div>
                     )}
 
+                    {selectedEmployee && (
+                        <div className="bg-muted/30 p-3 rounded-md text-sm">
+                            <p><span className="font-semibold">Designation:</span> {selectedEmployee.role || 'N/A'}</p>
+                            <p><span className="font-semibold">Experience:</span> {selectedEmployee.experience || 0} Years</p>
+                        </div>
+                    )}
+
+
+
                     {!preSelectedProjectId && (
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Project</label>
@@ -190,6 +214,39 @@ export function UtilizationDialog({
                             )}
                         </div>
                     )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Project Role</label>
+                            <Input
+                                placeholder="e.g. Lead Developer"
+                                value={form.role}
+                                onChange={(e) => handleFieldChange('role', e.target.value)}
+                            />
+                            {errors.role && (
+                                <p className="text-sm text-red-500">{errors.role}</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Type</label>
+                            <Select
+                                value={form.type}
+                                onValueChange={(val) => handleFieldChange('type', val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Billable">Billable</SelectItem>
+                                    <SelectItem value="Shared">Shared</SelectItem>
+                                    <SelectItem value="Shadow">Shadow</SelectItem>
+                                    <SelectItem value="Training">Training</SelectItem>
+                                    <SelectItem value="Non-Billable">Non-Billable</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
 
                     <div className="space-y-2">
                         <label htmlFor="utilization_percent" className="text-sm font-medium">

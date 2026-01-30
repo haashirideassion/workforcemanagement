@@ -25,6 +25,7 @@ export interface Account {
     zone: 'USA' | 'Asia' | 'EMEA' | 'LatAm' | 'APAC' | 'Europe';
     contractValue?: number;
     startDate: string;
+    description?: string;
 }
 
 // Employee types
@@ -35,9 +36,11 @@ export interface Employee {
     entity_id: string;
     employment_type: EmploymentType;
     status: EmployeeStatus;
+    employee_code?: string;
     performance_score: number | null;
     role?: string;
     specialization?: string;
+    experience?: number;
     created_at: string;
     updated_at: string;
     // Computed fields
@@ -58,6 +61,7 @@ export interface Project {
     status: ProjectStatus;
     created_at: string;
     updated_at: string;
+    description?: string;
     // Computed fields
     entity?: Entity;
     utilization?: Utilization[];
@@ -73,6 +77,8 @@ export interface Utilization {
     utilization_percent: number;
     start_date: string;
     end_date: string | null;
+    role?: string;
+    type?: 'Billable' | 'Shared' | 'Shadow' | 'Training' | 'Non-Billable';
     created_at: string;
     // Computed fields
     employee?: Employee;

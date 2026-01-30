@@ -43,7 +43,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const navItems = [
-    { to: '/', label: 'Overview', icon: House },
+    { to: '/', label: 'Dashboard', icon: House },
     { to: '/employees', label: 'Employees', icon: Users },
     { to: '/accounts', label: 'Accounts', icon: Buildings },
     { to: '/projects', label: 'Projects', icon: Briefcase },

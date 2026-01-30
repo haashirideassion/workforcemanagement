@@ -23,6 +23,7 @@ export interface ProjectFormData {
     start_date: string;
     end_date: string;
     status: 'active' | 'completed' | 'on-hold' | 'proposal';
+    description?: string;
 }
 
 interface ProjectFormDialogProps {
@@ -52,6 +53,7 @@ export function ProjectFormDialog({
         start_date: '',
         end_date: '',
         status: 'active',
+        description: '',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -64,6 +66,7 @@ export function ProjectFormDialog({
                 start_date: project?.start_date || '',
                 end_date: project?.end_date || '',
                 status: project?.status || 'active',
+                description: project?.description || '',
             });
             setErrors({});
         }
@@ -88,6 +91,24 @@ export function ProjectFormDialog({
         if (!form.entity_id) {
             newErrors.entity_id = 'Please select an entity';
         }
+
+        if (form.status === 'proposal') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (form.start_date) {
+                const startDate = new Date(form.start_date);
+                if (startDate <= today) {
+                    newErrors.start_date = 'Start Date must be in the future for Proposal status';
+                }
+            }
+            if (form.end_date) {
+                const endDate = new Date(form.end_date);
+                if (endDate <= today) {
+                    newErrors.end_date = 'End Date must be in the future for Proposal status';
+                }
+            }
+        }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -103,6 +124,7 @@ export function ProjectFormDialog({
                 start_date: '',
                 end_date: '',
                 status: 'active',
+                description: '',
             });
         }
     };
@@ -193,6 +215,18 @@ export function ProjectFormDialog({
                         </Select>
                     </div>
 
+                    <div className="space-y-2">
+                        <label htmlFor="description" className="text-sm font-medium">
+                            Description
+                        </label>
+                        <Input
+                            id="description"
+                            placeholder="Brief project description..."
+                            value={form.description || ''}
+                            onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label htmlFor="start_date" className="text-sm font-medium">
@@ -204,6 +238,9 @@ export function ProjectFormDialog({
                                 value={form.start_date}
                                 onChange={(e) => setForm({ ...form, start_date: e.target.value })}
                             />
+                            {errors.start_date && (
+                                <p className="text-sm text-red-500">{errors.start_date}</p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -216,6 +253,9 @@ export function ProjectFormDialog({
                                 value={form.end_date}
                                 onChange={(e) => setForm({ ...form, end_date: e.target.value })}
                             />
+                            {errors.end_date && (
+                                <p className="text-sm text-red-500">{errors.end_date}</p>
+                            )}
                         </div>
                     </div>
 

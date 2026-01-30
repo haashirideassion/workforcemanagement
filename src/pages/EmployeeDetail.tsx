@@ -406,15 +406,42 @@ export function EmployeeDetail() {
                             <Info size={16} weight="fill" />
                             More Info
                         </Button>
+                        <Badge variant="outline" className="text-muted-foreground bg-muted/20">
+                            {employee.employee_code || 'No ID'}
+                        </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                             <EnvelopeSimple size={14} />
                             {employee.email}
                         </span>
-                        <span className="flex items-center gap-1">
-                            <Buildings size={14} />
-                            {employee.entity?.name || 'N/A'}
+                        <span className="flex items-center gap-2">
+                            <Briefcase size={14} className="shrink-0" />
+                            <div className="flex flex-wrap gap-1">
+                                {(() => {
+                                    const activeProjects = employee.utilization_data?.filter(u =>
+                                        (!u.end_date || u.end_date >= new Date().toISOString().split('T')[0]) &&
+                                        u.start_date <= new Date().toISOString().split('T')[0]
+                                    ) || [];
+
+                                    if (activeProjects.length > 0) {
+                                        return activeProjects.map(u => (
+                                            <Badge
+                                                key={u.id}
+                                                variant="secondary"
+                                                className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors font-normal text-xs px-2 py-0.5"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (u.project?.id) navigate(`/projects/${u.project.id}`);
+                                                }}
+                                            >
+                                                {u.project?.name}
+                                            </Badge>
+                                        ));
+                                    }
+                                    return <span className="text-sm text-muted-foreground">Bench</span>;
+                                })()}
+                            </div>
                         </span>
                     </div>
                 </div>
@@ -498,11 +525,27 @@ export function EmployeeDetail() {
                                             return (
                                                 <TableRow key={alloc.id}>
                                                     <TableCell className="font-medium">
-                                                        {alloc.project?.name || 'Unknown'}
+                                                        {alloc.project ? (
+                                                            <span
+                                                                className="cursor-pointer hover:underline text-brand-600 dark:text-brand-400"
+                                                                onClick={() => {
+                                                                    // Since alloc.project in localUtilization might lack ID in some mock cases, check it
+                                                                    // But for now assume consistency or fallback
+                                                                    // Actually localUtilization comes from employee.utilization_data which has full project info usually
+                                                                    // But dummy data 'mock1' has project object.
+                                                                    // Check if project has ID, otherwise just show name
+                                                                    if ((alloc as any).project_id || (alloc.project as any).id) {
+                                                                        navigate(`/projects/${(alloc as any).project_id || (alloc.project as any).id}`);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {alloc.project.name}
+                                                            </span>
+                                                        ) : 'Unknown'}
                                                     </TableCell>
                                                     <TableCell>{alloc.utilization_percent}%</TableCell>
                                                     <TableCell>{alloc.start_date}</TableCell>
-                                                    <TableCell>{alloc.end_date || 'Ongoing'}</TableCell>
+                                                    <TableCell>{alloc.end_date}</TableCell>
                                                     <TableCell>
                                                         <Badge variant={isActive ? 'default' : 'secondary'}>
                                                             {isActive ? 'Active' : 'Ended'}
@@ -595,12 +638,12 @@ export function EmployeeDetail() {
                         <CardContent>
                             <div className="flex items-center gap-6">
                                 <div className="text-5xl font-bold text-brand-600">
-                                    {employee.performance_score ? (employee.performance_score / 2).toFixed(1) : 'N/A'}
+                                    {employee.performance_score !== null && employee.performance_score !== undefined ? employee.performance_score.toFixed(1) : 'N/A'}
                                 </div>
                                 <div className="flex-1">
                                     <p className="text-lg text-muted-foreground mb-2">out of 5</p>
                                     <SegmentedProgress
-                                        value={employee.performance_score ? (employee.performance_score / 2) * 20 : 0}
+                                        value={employee.performance_score ? employee.performance_score * 20 : 0}
                                         size="md"
                                         className="w-48"
                                     />
@@ -1142,6 +1185,6 @@ export function EmployeeDetail() {
                     </DialogContent>
                 </Dialog>
             </Tabs>
-        </div>
+        </div >
     );
 }

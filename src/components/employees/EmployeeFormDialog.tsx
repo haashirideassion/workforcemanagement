@@ -21,9 +21,12 @@ import type { Employee, Entity } from '@/types';
 
 export interface EmployeeFormData {
     name: string;
+    employee_code: string;
     email: string;
+    role: string;
+    experience: number;
     entity_id: string;
-    employment_type: 'permanent' | 'retainer' | 'intern';
+    employment_type: 'permanent' | 'retainer' | 'intern' | 'contractor';
     performance_score: number | null;
 }
 
@@ -59,7 +62,10 @@ export function EmployeeFormDialog({
     const [step, setStep] = useState<1 | 2>(1);
     const [form, setForm] = useState<EmployeeFormData>({
         name: '',
+        employee_code: '',
         email: '',
+        role: '',
+        experience: 0,
         entity_id: '',
         employment_type: 'permanent',
         performance_score: null,
@@ -81,7 +87,10 @@ export function EmployeeFormDialog({
             setStep(1);
             setForm({
                 name: employee?.name || '',
+                employee_code: employee?.employee_code || '',
                 email: employee?.email || '',
+                role: employee?.role || '',
+                experience: employee?.experience || 0,
                 entity_id: employee?.entity_id || '',
                 employment_type: employee?.employment_type || 'permanent',
                 performance_score: employee?.performance_score || null,
@@ -166,7 +175,10 @@ export function EmployeeFormDialog({
     const resetForm = () => {
         setForm({
             name: '',
+            employee_code: '',
             email: '',
+            role: '',
+            experience: 0,
             entity_id: '',
             employment_type: 'permanent',
             performance_score: null,
@@ -217,6 +229,18 @@ export function EmployeeFormDialog({
                         </div>
 
                         <div className="space-y-2">
+                            <label htmlFor="employee_code" className="text-sm font-medium">
+                                Employee ID
+                            </label>
+                            <Input
+                                id="employee_code"
+                                placeholder="EMP001"
+                                value={form.employee_code}
+                                onChange={(e) => handleFieldChange('employee_code', e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
                             <label htmlFor="email" className="text-sm font-medium">
                                 Email
                             </label>
@@ -230,6 +254,28 @@ export function EmployeeFormDialog({
                             {errors.email && (
                                 <p className="text-sm text-red-500">{errors.email}</p>
                             )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Designation</label>
+                                <Input
+                                    placeholder="e.g. Senior Developer"
+                                    value={form.role}
+                                    onChange={(e) => handleFieldChange('role', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Experience (Years)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    placeholder="e.g. 5"
+                                    value={form.experience || ''}
+                                    onChange={(e) => handleFieldChange('experience', parseFloat(e.target.value))}
+                                />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -259,7 +305,7 @@ export function EmployeeFormDialog({
                                 <label className="text-sm font-medium">Employment Type</label>
                                 <Select
                                     value={form.employment_type}
-                                    onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' })}
+                                    onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' | 'contractor' })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select type" />
@@ -268,6 +314,7 @@ export function EmployeeFormDialog({
                                         <SelectItem value="permanent">Permanent</SelectItem>
                                         <SelectItem value="retainer">Retainer</SelectItem>
                                         <SelectItem value="intern">Intern</SelectItem>
+                                        <SelectItem value="contractor">Contractor</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -275,15 +322,15 @@ export function EmployeeFormDialog({
 
                         <div className="space-y-2">
                             <label htmlFor="performance_score" className="text-sm font-medium">
-                                Performance Score (0-10)
+                                Performance Score (0-5)
                             </label>
                             <Input
                                 id="performance_score"
                                 type="number"
                                 min="0"
-                                max="10"
+                                max="5"
                                 step="0.1"
-                                placeholder="7.5"
+                                placeholder="4.5"
                                 value={form.performance_score ?? ''}
                                 onChange={(e) => setForm({
                                     ...form,
@@ -348,6 +395,18 @@ export function EmployeeFormDialog({
                         </div>
 
                         <div className="space-y-2">
+                            <label htmlFor="employee_code" className="text-sm font-medium">
+                                Employee ID
+                            </label>
+                            <Input
+                                id="employee_code"
+                                placeholder="EMP001"
+                                value={form.employee_code}
+                                onChange={(e) => handleFieldChange('employee_code', e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
                             <label htmlFor="email" className="text-sm font-medium">
                                 Email
                             </label>
@@ -361,6 +420,28 @@ export function EmployeeFormDialog({
                             {errors.email && (
                                 <p className="text-sm text-red-500">{errors.email}</p>
                             )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Designation</label>
+                                <Input
+                                    placeholder="e.g. Senior Developer"
+                                    value={form.role}
+                                    onChange={(e) => handleFieldChange('role', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Experience (Years)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    placeholder="e.g. 5"
+                                    value={form.experience || ''}
+                                    onChange={(e) => handleFieldChange('experience', parseFloat(e.target.value))}
+                                />
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -390,7 +471,7 @@ export function EmployeeFormDialog({
                                 <label className="text-sm font-medium">Employment Type</label>
                                 <Select
                                     value={form.employment_type}
-                                    onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' })}
+                                    onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' | 'contractor' })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select type" />
@@ -399,6 +480,7 @@ export function EmployeeFormDialog({
                                         <SelectItem value="permanent">Permanent</SelectItem>
                                         <SelectItem value="retainer">Retainer</SelectItem>
                                         <SelectItem value="intern">Intern</SelectItem>
+                                        <SelectItem value="contractor">Contractor</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -406,15 +488,15 @@ export function EmployeeFormDialog({
 
                         <div className="space-y-2">
                             <label htmlFor="performance_score" className="text-sm font-medium">
-                                Performance Score (0-10)
+                                Performance Score (0-5)
                             </label>
                             <Input
                                 id="performance_score"
                                 type="number"
                                 min="0"
-                                max="10"
+                                max="5"
                                 step="0.1"
-                                placeholder="7.5"
+                                placeholder="4.5"
                                 value={form.performance_score ?? ''}
                                 onChange={(e) => setForm({
                                     ...form,
