@@ -142,6 +142,7 @@ export function ProjectDetail() {
     // Get available employees from the same entity who are not fully utilized
     const assignedEmployeeIds = new Set(project.utilization?.map(u => u.employee_id) || []);
     const availableEmployees = allEmployees.filter(emp =>
+        emp.status === 'active' &&
         emp.entity_id === project.entity_id &&
         !assignedEmployeeIds.has(emp.id) &&
         (emp.utilization || 0) < 100
@@ -282,7 +283,13 @@ export function ProjectDetail() {
                                         </TableCell>
                                         <TableCell>{utilization.end_date || 'Dec 2024'}</TableCell>
                                         <TableCell>
-                                            <Badge variant="green">Active</Badge>
+                                            <Badge variant={
+                                                utilization.status === 'Active' ? 'green' : 
+                                                utilization.status === 'Planned' ? 'blue' : 
+                                                utilization.status === 'On Hold' ? 'yellow' : 'secondary'
+                                            }>
+                                                {utilization.status || 'Active'}
+                                            </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1">
@@ -291,6 +298,7 @@ export function ProjectDetail() {
                                                     size="icon"
                                                     className="h-8 w-8 text-muted-foreground hover:text-brand-600"
                                                     onClick={(e) => handleEditMember(utilization, e)}
+                                                    disabled={utilization.employee?.status !== 'active' || ['Planned', 'On Hold', 'Ended'].includes(utilization.status || '')}
                                                 >
                                                     <Pencil size={16} />
                                                 </Button>
@@ -299,6 +307,7 @@ export function ProjectDetail() {
                                                     size="icon"
                                                     className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                                                     onClick={(e) => handleDeleteMember(utilization.id, e)}
+                                                    disabled={utilization.employee?.status !== 'active' || ['Planned', 'On Hold', 'Ended'].includes(utilization.status || '')}
                                                 >
                                                     <Trash size={16} />
                                                 </Button>

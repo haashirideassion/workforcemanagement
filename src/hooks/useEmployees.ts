@@ -317,8 +317,8 @@ export function useUpdateEmployeeAllocations() {
                         
                         return payload;
                     })
-                    // Filter out allocations with allocation_percent <= 0 (database constraint)
-                    .filter(a => a.allocation_percent > 0 && a.allocation_percent <= 100);
+                    // Filter out allocations with allocation_percent < 0 or > 100
+                    .filter(a => a.allocation_percent >= 0 && a.allocation_percent <= 100);
 
                 if (insertPayload.length > 0) {
                     const { error: insertError } = await supabase

@@ -273,7 +273,7 @@ export function EmployeeFormDialog({
                     </DialogHeader>
 
                     <form onSubmit={handleSubmitEdit} className="space-y-4">
-                        {isEditing && form.status !== 'active' && (
+                        {isEditing && form.status !== 'active' && employee?.status !== 'active' && (
                             <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-sm border border-amber-200 dark:border-amber-800 mb-4 flex items-start gap-2">
                                 <Info size={18} className="shrink-0 mt-0.5" />
                                 <p>This employee is currently <strong>{form.status}</strong>. To edit their details, first change their status back to <strong>Active</strong>.</p>
@@ -288,7 +288,7 @@ export function EmployeeFormDialog({
                                 placeholder="John Doe"
                                 value={form.name}
                                 onChange={(e) => handleFieldChange('name', e.target.value)}
-                                disabled={isEditing && form.status !== 'active'}
+                                disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                             />
                             {errors.name && (
                                 <p className="text-sm text-red-500">{errors.name}</p>
@@ -304,7 +304,7 @@ export function EmployeeFormDialog({
                                 placeholder="EMP001"
                                 value={form.employee_code}
                                 onChange={(e) => handleFieldChange('employee_code', e.target.value)}
-                                disabled={isEditing && form.status !== 'active'}
+                                disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                             />
                         </div>
 
@@ -318,7 +318,7 @@ export function EmployeeFormDialog({
                                 type="email"
                                 value={form.email}
                                 onChange={(e) => handleFieldChange('email', e.target.value)}
-                                disabled={isEditing && form.status !== 'active'}
+                                disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                             />
                             {errors.email && (
                                 <p className="text-sm text-red-500">{errors.email}</p>
@@ -332,7 +332,7 @@ export function EmployeeFormDialog({
                                     placeholder="e.g. Senior Developer"
                                     value={form.role}
                                     onChange={(e) => handleFieldChange('role', e.target.value)}
-                                    disabled={isEditing && form.status !== 'active'}
+                                    disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -348,7 +348,7 @@ export function EmployeeFormDialog({
                                         if ((val.match(/\./g) || []).length > 1) return;
                                         handleFieldChange('experience', val);
                                     }}
-                                    disabled={isEditing && form.status !== 'active'}
+                                    disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                                 />
                             </div>
                         </div>
@@ -359,7 +359,7 @@ export function EmployeeFormDialog({
                                 <Select
                                     value={form.entity_id}
                                     onValueChange={(val) => handleFieldChange('entity_id', val)}
-                                    disabled={isEditing && form.status !== 'active'}
+                                    disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select entity" />
@@ -382,7 +382,7 @@ export function EmployeeFormDialog({
                                 <Select
                                     value={form.employment_type}
                                     onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' | 'contractor' })}
-                                    disabled={isEditing && form.status !== 'active'}
+                                    disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select type" />
@@ -404,7 +404,7 @@ export function EmployeeFormDialog({
                                     placeholder="e.g. React, Node.js"
                                     value={form.primary_skills}
                                     onChange={(e) => handleFieldChange('primary_skills', e.target.value)}
-                                    disabled={isEditing && form.status !== 'active'}
+                                    disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -413,7 +413,7 @@ export function EmployeeFormDialog({
                                     placeholder="e.g. AWS, Figma"
                                     value={form.secondary_skills}
                                     onChange={(e) => handleFieldChange('secondary_skills', e.target.value)}
-                                    disabled={isEditing && form.status !== 'active'}
+                                    disabled={isEditing && form.status !== 'active' && employee?.status !== 'active'}
                                 />
                             </div>
                         </div>
@@ -446,7 +446,7 @@ export function EmployeeFormDialog({
                                         const numVal = val === '' ? 0 : parseInt(val, 10);
                                         handleFieldChange('utilization', Math.min(100, numVal));
                                     }}
-                                    disabled={form.status !== 'active'}
+                                    disabled={form.status !== 'active' && employee?.status !== 'active'}
                                 />
                             </div>
                         </div>
@@ -459,7 +459,7 @@ export function EmployeeFormDialog({
                         )}
 
                         <div className="flex justify-end gap-3 pt-4">
-                            {isEditing && form.status !== 'active' && (
+                            {isEditing && form.status !== 'active' && employee?.status !== 'active' && (
                                 <p className="text-sm text-amber-600 flex items-center gap-1.5 mr-auto">
                                     <Info size={16} />
                                     Only active employees can be edited
@@ -475,7 +475,7 @@ export function EmployeeFormDialog({
                                 <Button
                                     type="submit"
                                     className="bg-brand-600 hover:bg-brand-700 text-white"
-                                    disabled={isLoading || (isEditing && form.status !== 'active')}
+                                    disabled={isLoading || (isEditing && form.status !== 'active' && employee?.status !== 'active')}
                                     data-testid="employee-save-button"
                                 >
                                     {isLoading ? 'Saving...' : 'Save Changes'}

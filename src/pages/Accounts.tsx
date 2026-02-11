@@ -7,7 +7,6 @@ import {
     DotsThree,
     Briefcase,
     User,
-    Globe,
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -233,6 +232,7 @@ export function Accounts() {
                                 <TableHead>Account Name</TableHead>
                                 <TableHead>Entity</TableHead>
                                 <TableHead>Active Projects</TableHead>
+                                <TableHead>Domain</TableHead>
                                 <TableHead>Utilized Resources</TableHead>
                                 <TableHead>Average Utilization</TableHead>
                                 <TableHead>Zone</TableHead>
@@ -251,18 +251,6 @@ export function Accounts() {
                                         <div className="flex items-center gap-2">
                                             <div>
                                                 <p className="font-medium">{account.name}</p>
-                                                {account.website && (
-                                                    <a
-                                                        href={account.website.startsWith('http') ? account.website : `https://${account.website}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-xs text-brand-600 hover:text-brand-700 hover:underline flex items-center gap-1 mt-0.5"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        <Globe size={12} />
-                                                        {account.website.replace(/^https?:\/\//, '')}
-                                                    </a>
-                                                )}
                                                 <span className="text-sm text-muted-foreground block mt-0.5">{account.email}</span>
                                             </div>
                                         </div>
@@ -275,6 +263,11 @@ export function Accounts() {
                                             <Briefcase size={14} className="text-muted-foreground" />
                                             <span>{account.activeProjects}</span>
                                         </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary" className="font-normal">
+                                            {account.domain || 'N/A'}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">

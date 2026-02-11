@@ -6,6 +6,7 @@ import {
     DotsThree,
     PencilSimple,
     Archive,
+    Globe,
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -112,8 +113,24 @@ export function AccountDetail() {
                             <Badge variant="outline" className="text-sm font-normal">
                                 {account.billingType}
                             </Badge>
+                            {account.domain && (
+                                <Badge variant="secondary" className="text-sm font-normal">
+                                    {account.domain}
+                                </Badge>
+                            )}
                         </h1>
-                        <p className="text-muted-foreground">{account.description || 'Client account workforce overview'}</p>
+                        {account.website && (
+                            <a 
+                                href={account.website.startsWith('http') ? account.website : `https://${account.website}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-sm text-brand-600 hover:underline flex items-center gap-1 mt-1"
+                            >
+                                <Globe size={14} />
+                                {account.website}
+                            </a>
+                        )}
+                        <p className="text-muted-foreground mt-1">{account.description || 'Client account workforce overview'}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">

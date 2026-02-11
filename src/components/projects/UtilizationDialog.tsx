@@ -124,8 +124,11 @@ export function UtilizationDialog({
         return Object.keys(newErrors).length === 0;
     };
 
+    const isEmployeeActive = selectedEmployee ? selectedEmployee.status === 'active' : true;
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isEmployeeActive) return;
         if (validate()) {
             onSubmit({
                 ...form,
@@ -169,9 +172,9 @@ export function UtilizationDialog({
                                     <SelectValue placeholder="Select employee" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {employees.map((emp) => (
+                                    {employees.filter(e => e.status === 'active' || e.id === form.employee_id).map((emp) => (
                                         <SelectItem key={emp.id} value={emp.id}>
-                                            {emp.name}
+                                            {emp.name} {emp.status !== 'active' ? `(${emp.status})` : ''}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -311,7 +314,7 @@ export function UtilizationDialog({
                         <Button
                             type="submit"
                             className="bg-brand-600 hover:bg-brand-700 text-white"
-                            disabled={isLoading}
+                            disabled={isLoading || !isEmployeeActive}
                         >
                             {isLoading
                                 ? (utilization ? 'Updating...' : 'Adding...')

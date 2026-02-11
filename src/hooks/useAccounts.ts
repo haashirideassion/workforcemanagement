@@ -43,7 +43,8 @@ const transformAccount = (data: any): Account => {
         zone: data.zone as 'USA' | 'Asia' | 'EMEA' | 'LatAm' | 'APAC' | 'Europe',
         startDate: data.start_date,
         description: data.description,
-        website: data.website
+        website: data.website,
+        domain: data.domain
     };
 };
 
@@ -116,7 +117,8 @@ export function useCreateAccount() {
                 zone: account.zone,
                 start_date: account.startDate,
                 description: account.description,
-                website: account.website
+                website: account.website,
+                domain: account.domain
             };
 
             const { data, error } = await supabase
@@ -148,6 +150,7 @@ export function useUpdateAccount() {
             if (updates.startDate) dbPayload.start_date = updates.startDate;
             if (updates.description) dbPayload.description = updates.description;
             if (updates.website) dbPayload.website = updates.website;
+            if (updates.domain) dbPayload.domain = updates.domain;
             
             if (updates.entity) {
                  const { data: entityData, error: entityError } = await supabase

@@ -142,6 +142,7 @@ export function EmployeeDetail() {
         end_date: string | null;
         status: string;
         role?: string;
+        originalStatus?: string;
     }
     const [localUtilization, setLocalUtilization] = useState<LocalUtilization[]>([]);
     const [isManageUtilizationOpen, setIsManageUtilizationOpen] = useState(false);
@@ -187,7 +188,8 @@ export function EmployeeDetail() {
             if (active.length > 0) {
                 setLocalUtilization(active.map(a => ({
                     ...a,
-                    status: a.status || 'Active', // Keep status from API, default to Active if missing
+                    status: a.status || 'Active',
+                    originalStatus: a.status || 'Active',
                     utilization_percent: a.utilization_percent
                 })) as any);
             } else {
@@ -308,7 +310,8 @@ export function EmployeeDetail() {
                 utilization_percent: 0,
                 start_date: new Date().toISOString().split('T')[0],
                 end_date: null,
-                status: 'Active'
+                status: 'Active',
+                originalStatus: 'Active'
             }
         ]);
     };
@@ -353,9 +356,9 @@ export function EmployeeDetail() {
     const handleSaveUtilization = async () => {
         if (!id) return;
         
-        // Filter out empty allocations (with 0%)
+        // Include allocations that have a project selected (even with 0%)
         const validAllocations = localUtilization
-            .filter(a => Number(a.utilization_percent) > 0)
+            .filter(a => a.project_id || (a as any).projectId)
             .map(a => {
                 // Include all fields from the allocation
                 return {
@@ -372,7 +375,7 @@ export function EmployeeDetail() {
         }
 
         if (validAllocations.length === 0 && localUtilization.length > 0) {
-            toast.error("Please set allocation percentage > 0% for at least one project");
+            toast.error("Please select a project for the utilization record");
             return;
         }
 
@@ -879,14 +882,19 @@ export function EmployeeDetail() {
                                     </TableHeader>
                                     <TableBody>
                                         {localUtilization.length > 0 ? (
-                                            localUtilization.map((alloc) => (
-                                                <TableRow key={alloc.id}>
-                                                    <TableCell>
-                                                        <Select
-                                                            value={(alloc as any).project?.id || ''} 
-                                                            onValueChange={(val) => handleUpdateUtilization(alloc.id, 'projectId', val)}
-                                                        >
-                                                            <SelectTrigger className="h-9 w-full">
+                                            localUtilization.map((alloc) => {
+                                                const isOriginallyNotActive = ['Planned', 'On Hold', 'Ended'].includes(alloc.originalStatus || 'Active');
+                                                const isRowDisabled = !alloc.id.startsWith('new-') && isOriginallyNotActive;
+                                                
+                                                return (
+                                                    <TableRow key={alloc.id}>
+                                                        <TableCell>
+                                                            <Select
+                                                                value={(alloc as any).project?.id || ''} 
+                                                                onValueChange={(val) => handleUpdateUtilization(alloc.id, 'projectId', val)}
+                                                                disabled={employee.status !== 'active' || isRowDisabled}
+                                                            >
+                                                                <SelectTrigger className="h-9 w-full" disabled={employee.status !== 'active' || isRowDisabled}>
                                                                 <SelectValue placeholder="Select Project" />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -902,8 +910,9 @@ export function EmployeeDetail() {
                                                         <Select
                                                             value={alloc.status}
                                                             onValueChange={(val) => handleUpdateUtilization(alloc.id, 'status', val)}
+                                                            disabled={employee.status !== 'active'}
                                                         >
-                                                            <SelectTrigger className="h-9">
+                                                            <SelectTrigger className="h-9" disabled={employee.status !== 'active'}>
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -930,19 +939,26 @@ export function EmployeeDetail() {
                                                                     const finalValue = Math.min(100, numVal);
                                                                     handleUpdateUtilization(alloc.id, 'utilization_percent', finalValue);
                                                                 }}
-                                                                disabled={alloc.status !== 'Active'}
+                                                                disabled={employee.status !== 'active' || isRowDisabled}
                                                                 className="pr-6"
                                                             />
                                                             <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">%</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveUtilization(alloc.id)}>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10" 
+                                                            onClick={() => handleRemoveUtilization(alloc.id)}
+                                                            disabled={employee.status !== 'active' || isRowDisabled}
+                                                        >
                                                             <Trash size={16} />
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
-                                            ))
+                                                );
+                                            })
                                         ) : (
                                             <TableRow>
                                                 <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
@@ -954,7 +970,12 @@ export function EmployeeDetail() {
                                 </Table>
                             </div>
 
-                            <Button variant="outline" onClick={handleAddUtilizationRow} className="w-full border-dashed">
+                            <Button 
+                                variant="outline" 
+                                onClick={handleAddUtilizationRow} 
+                                className="w-full border-dashed"
+                                disabled={employee.status !== 'active'}
+                            >
                                 <Plus size={16} className="mr-2" />
                                 Add Project
                             </Button>
