@@ -36,8 +36,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useEmployee, useUpdateEmployeeAllocations } from '@/hooks/useEmployees';
+import { useProjectHistory } from '@/hooks/useProjectTransitions';
 import { useProjects } from '@/hooks/useProjects';
 import { useCreateCertification, useDeleteCertification } from '@/hooks/useCertifications';
+import { ProjectHistory } from '@/components/ProjectHistory';
 
 function getUtilizationCategory(utilization: number) {
     if (utilization >= 80) return { label: 'Fully Utilized', variant: 'green' as const };
@@ -81,6 +83,17 @@ interface ExtendedEmployeeInfo {
     designation: string;
     currentRole: string;
     currentProject: string;
+}
+
+// Project History Tab Component
+function ProjectHistoryTab({ employeeId, employeeName }: { employeeId: string; employeeName: string }) {
+    const { data: projectHistory = [], isLoading } = useProjectHistory(employeeId);
+
+    if (isLoading) {
+        return <div className="p-8 text-center">Loading project history...</div>;
+    }
+
+    return <ProjectHistory transitions={projectHistory} employeeId={employeeId} employeeName={employeeName} />;
 }
 
 export function EmployeeDetail() {
@@ -462,10 +475,14 @@ export function EmployeeDetail() {
 
             {/* Tabs - 4 Priority Sections */}
             <Tabs defaultValue="utilization">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="utilization">
                         <Briefcase size={16} className="mr-2" />
                         Utilization
+                    </TabsTrigger>
+                    <TabsTrigger value="history">
+                        <Briefcase size={16} className="mr-2" />
+                        History
                     </TabsTrigger>
                     <TabsTrigger value="skills">
                         <Star size={16} className="mr-2" />
@@ -554,6 +571,11 @@ export function EmployeeDetail() {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* Tab: Project History */}
+                <TabsContent value="history" className="mt-4">
+                    <ProjectHistoryTab employeeId={id || ''} employeeName={employee.name} />
                 </TabsContent>
 
                 {/* Tab 2: Skills - Primary & Secondary */}
@@ -850,8 +872,8 @@ export function EmployeeDetail() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Project</TableHead>
-                                            <TableHead className="w-[100px]">Utilization %</TableHead>
                                             <TableHead className="w-[120px]">Status</TableHead>
+                                            <TableHead className="w-[100px]">Utilization %</TableHead>
                                             <TableHead className="w-[40px]"></TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -877,6 +899,22 @@ export function EmployeeDetail() {
                                                         </Select>
                                                     </TableCell>
                                                     <TableCell>
+                                                        <Select
+                                                            value={alloc.status}
+                                                            onValueChange={(val) => handleUpdateUtilization(alloc.id, 'status', val)}
+                                                        >
+                                                            <SelectTrigger className="h-9">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Active">Active</SelectItem>
+                                                                <SelectItem value="Planned">Planned</SelectItem>
+                                                                <SelectItem value="On Hold">On Hold</SelectItem>
+                                                                <SelectItem value="Ended">Ended</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </TableCell>
+                                                    <TableCell>
                                                         <div className="relative">
                                                             <Input
                                                                 type="text"
@@ -897,22 +935,6 @@ export function EmployeeDetail() {
                                                             />
                                                             <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">%</span>
                                                         </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Select
-                                                            value={alloc.status}
-                                                            onValueChange={(val) => handleUpdateUtilization(alloc.id, 'status', val)}
-                                                        >
-                                                            <SelectTrigger className="h-9">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Active">Active</SelectItem>
-                                                                <SelectItem value="Planned">Planned</SelectItem>
-                                                                <SelectItem value="On Hold">On Hold</SelectItem>
-                                                                <SelectItem value="Ended">Ended</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
                                                     </TableCell>
                                                     <TableCell>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveUtilization(alloc.id)}>

@@ -33,6 +33,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEmployees } from "@/hooks/useEmployees";
+import { BenchStatusBadge } from "@/components/BenchStatusBadge";
 
 function getUtilizationBadge(utilization: number) {
     if (utilization >= 80) {
@@ -135,7 +136,8 @@ export function Bench() {
                                 <TableHead>Entity</TableHead>
                                 <TableHead>Type</TableHead>
                                 <TableHead>Utilization</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>Utilization Status</TableHead>
+                                <TableHead>Bench Status</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -172,6 +174,12 @@ export function Bench() {
                                         {getUtilizationBadge(employee.utilization || 0)}
                                     </TableCell>
                                     <TableCell>
+                                        <BenchStatusBadge 
+                                            status={employee.bench_status} 
+                                            utilization={employee.utilization}
+                                        />
+                                    </TableCell>
+                                    <TableCell>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button
@@ -193,7 +201,7 @@ export function Bench() {
                             ))}
                             {filteredEmployees.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                                    <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
                                         No employees found on bench matching criteria.
                                     </TableCell>
                                 </TableRow>

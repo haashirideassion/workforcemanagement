@@ -53,6 +53,7 @@ import { Warning, WarningCircle, Info } from '@phosphor-icons/react';
 export function Optimization() {
     const [entityFilter, setEntityFilter] = useState('all');
     const [utilizationFilter, setUtilizationFilter] = useState('all');
+    const [benchStatusFilter, setBenchStatusFilter] = useState('all');
     const { data: employees = [], isLoading } = useEmployees();
 
     const filteredData = employees.filter((emp) => {
@@ -63,7 +64,14 @@ export function Optimization() {
             (utilizationFilter === 'low' && utilization < 50) ||
             (utilizationFilter === 'medium' && utilization >= 50 && utilization < 80) ||
             (utilizationFilter === 'high' && utilization >= 80);
-        return matchesEntity && matchesUtilization;
+        
+        const matchesBenchStatus =
+            benchStatusFilter === 'all' ||
+            (benchStatusFilter === 'layoff' && emp.bench_status === 'layoff-consideration') ||
+            (benchStatusFilter === 'at-risk' && emp.bench_status === 'at-risk') ||
+            (benchStatusFilter === 'review' && emp.bench_status === 'review-required');
+        
+        return matchesEntity && matchesUtilization && matchesBenchStatus;
     });
 
     if (isLoading) return <div className="p-8 text-center italic">Analyzing workforce metrics...</div>;
@@ -113,6 +121,17 @@ export function Optimization() {
                                 <SelectItem value="low">Low (&lt;50%)</SelectItem>
                                 <SelectItem value="medium">Medium (50-79%)</SelectItem>
                                 <SelectItem value="high">High (≥80%)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={benchStatusFilter} onValueChange={setBenchStatusFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Bench Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                <SelectItem value="layoff">Layoff Consideration</SelectItem>
+                                <SelectItem value="at-risk">At Risk</SelectItem>
+                                <SelectItem value="review">Review Required</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

@@ -106,7 +106,7 @@ export function Dashboard() {
             </div>
 
             {/* KPI Cards - Replaced with TrendCard */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <TrendCard
                     title="Total Employees"
                     value={kpis?.totalEmployees.value || 0}
@@ -135,6 +135,16 @@ export function Dashboard() {
                     trend={{ value: 0, direction: 'neutral', isPositive: true }}
                     history={kpis?.totalEmployees.history || []}
                     onDetailClick={() => navigate('/employees?filter=virtual_pool')}
+                />
+                <TrendCard
+                    title="At Risk"
+                    value={employees.filter(e => e.bench_status === 'at-risk').length}
+                    subValue={`${kpis?.totalEmployees.value ? Math.round((employees.filter(e => e.bench_status === 'at-risk').length / (kpis.totalEmployees.value || 1)) * 100) : 0}%`}
+                    icon={<ChartBar size={18} weight="fill" />}
+                    iconBgColor="bg-orange-100 text-orange-700"
+                    trend={{ value: 0, direction: 'neutral', isPositive: false }}
+                    history={[]}
+                    onDetailClick={() => navigate('/optimization')}
                 />
             </div>
 

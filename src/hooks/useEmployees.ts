@@ -2,6 +2,53 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Employee, EmployeeFilters } from '@/types';
 
+// Helper to calculate bench duration and status
+export function calculateBenchStatus(employee: any) {
+    const utilization = employee.utilization || 0;
+    
+    // Use bench_start_date if available, otherwise use created_at
+    const startDate = employee.bench_start_date 
+        ? new Date(employee.bench_start_date) 
+        : (employee.created_at ? new Date(employee.created_at) : new Date());
+    
+    const benchDays = Math.floor((new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (utilization === 0) {
+        if (benchDays > 30) {
+            return {
+                status: 'layoff-consideration',
+                label: 'Layoff Consideration',
+                benchDays,
+                severity: 'critical'
+            };
+        }
+        if (benchDays > 0) {
+            return {
+                status: 'at-risk',
+                label: 'At Risk',
+                benchDays,
+                severity: 'warning'
+            };
+        }
+    }
+
+    if (utilization > 0 && utilization < 50 && benchDays === 0) {
+        return {
+            status: 'review-required',
+            label: 'Review Required',
+            benchDays,
+            severity: 'info'
+        };
+    }
+
+    return {
+        status: 'healthy',
+        label: 'Healthy',
+        benchDays,
+        severity: 'success'
+    };
+}
+
 // Helper to calculate utilization from active allocations
 export function calculateUtilization(allocations: any[] = [], referenceDate: Date = new Date()): number {
     if (!allocations || allocations.length === 0) return 0;
@@ -71,10 +118,15 @@ export function useEmployees(filters?: EmployeeFilters) {
 
             if (error) throw error;
 
-            return (data as any[]).map(emp => ({
-                ...emp,
-                utilization: calculateUtilization(emp.utilization_data)
-            })) as Employee[];
+            return (data as any[]).map(emp => {
+                const utilization = calculateUtilization(emp.utilization_data);
+                const benchStatus = calculateBenchStatus({ ...emp, utilization });
+                return {
+                    ...emp,
+                    utilization,
+                    bench_status: benchStatus.status
+                };
+            }) as Employee[];
         },
     });
 }
@@ -101,9 +153,12 @@ export function useEmployee(id: string) {
 
             if (error) throw error;
             const emp = data as Employee;
+            const utilization = calculateUtilization(emp.utilization_data);
+            const benchStatus = calculateBenchStatus({ ...emp, utilization });
             return {
                 ...emp,
-                utilization: calculateUtilization(emp.utilization_data)
+                utilization,
+                bench_status: benchStatus.status
             };
         },
         enabled: !!id,

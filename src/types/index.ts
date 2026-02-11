@@ -50,6 +50,7 @@ export interface Employee {
     utilization_data?: Utilization[];
     certifications?: Certification[];
     utilization?: number;
+    bench_status?: string; // 'healthy' | 'review-required' | 'at-risk' | 'layoff-consideration'
     primary_skills?: string;
     secondary_skills?: string;
 }
@@ -115,6 +116,32 @@ export interface Certification {
     name: string;
     issuer: string | null;
     valid_until: string | null;
+}
+
+// Project Transition types (for tracking project changes)
+export interface ProjectTransition {
+    id: string;
+    employee_id: string;
+    project_id: string;
+    allocation_id?: string;
+    start_date: string;
+    end_date?: string;
+    duration_days?: number;
+    remarks?: string;
+    status: 'active' | 'completed';
+    created_at: string;
+    updated_at: string;
+    // Computed fields
+    project?: Project;
+    comments?: TransitionComment[];
+}
+
+export interface TransitionComment {
+    id: string;
+    transition_id: string;
+    comment_by: string;
+    comment_text: string;
+    created_at: string;
 }
 
 // Utilization types (effort-based project utilization)
