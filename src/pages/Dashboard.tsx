@@ -1,9 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
 import {
-    Users, Briefcase, ChartBar,
-    CaretUp,
-    CaretDown,
+    Users, ChartBar,
+    // CaretUp,
+    // CaretDown,
     ArrowRight,
+    // Briefcase,
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +14,10 @@ import { useDashboardKPIs, useUpcomingReleases } from '@/hooks/useDashboard';
 import { useEmployees } from '@/hooks/useEmployees';
 import { useProjects } from '@/hooks/useProjects';
 import { EntityResourceDialog } from '@/components/dashboard/EntityResourceDialog';
+// import { ResourceChart } from '@/components/dashboard/ResourceChart';
 import type { Employee } from "@/types";
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useAccounts } from '@/hooks/useAccounts';
 
 // Helper to calculate resource distribution metrics
 function calculateResourceDistribution(employees: any[]) {
@@ -28,8 +31,9 @@ function calculateResourceDistribution(employees: any[]) {
             stats[entityName] = { fullyUtilized: 0, partiallyUtilized: 0, available: 0 };
         }
 
-        if (emp.utilization >= 80) stats[entityName].fullyUtilized++;
-        else if (emp.utilization >= 50) stats[entityName].partiallyUtilized++;
+        const util = emp.utilization || 0;
+        if (util >= 80) stats[entityName].fullyUtilized++;
+        else if (util >= 50) stats[entityName].partiallyUtilized++;
         else stats[entityName].available++;
     });
 
@@ -43,11 +47,22 @@ export function Dashboard() {
     const navigate = useNavigate(); // Added navigation logic
     const { data: employees = [] } = useEmployees();
     const { data: projects = [] } = useProjects();
+    const { data: accounts = [] } = useAccounts();
     const { data: kpis } = useDashboardKPIs();
 
-    const accountMetrics = kpis?.accountMetrics;
+    // Account Metrics calculation
+    const accountMetrics = useMemo(() => {
+        return accounts.map(acc => {
+            const accProjects = projects.filter(p => p.account_id === acc.id);
+            return {
+                id: acc.id,
+                name: acc.name,
+                totalCount: accProjects.length,
+                activeCount: accProjects.filter(p => p.status === 'active').length
+            };
+        }).filter(m => m.totalCount > 0).sort((a, b) => b.totalCount - a.totalCount);
+    }, [accounts, projects]);
 
-    const activeProjectsCount = projects.filter((p) => p.status === 'active').length;
 
     const resourceDistribution = calculateResourceDistribution(employees);
 
@@ -66,9 +81,10 @@ export function Dashboard() {
             const matchesEntity = e.entity?.name === entityName;
             if (!matchesEntity) return false;
 
-            if (type === 'utilized') return e.utilization >= 80;
-            if (type === 'partial') return e.utilization >= 50 && e.utilization < 80;
-            return e.utilization < 50;
+            const util = e.utilization || 0;
+            if (type === 'utilized') return util >= 80;
+            if (type === 'partial') return util >= 50 && util < 80;
+            return util < 50;
         });
 
         let title = `${entityName} - ${type === 'utilized' ? 'Fully Utilized' : type === 'partial' ? 'Partially Utilized' : 'Available'}`;
@@ -83,9 +99,9 @@ export function Dashboard() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-bold">Dashboard</h1>
+                <h1 className="text-2xl font-bold">Workforce Intelligence Summary</h1>
                 <p className="text-muted-foreground">
-                    Workforce overview and key metrics
+                    Comprehensive insights into workforce health and resource distribution
                 </p>
             </div>
 
@@ -111,39 +127,15 @@ export function Dashboard() {
                     onDetailClick={() => navigate('/employees?filter=benched')}
                 />
                 <TrendCard
-                    title="Active Projects"
-                    value={kpis?.activeProjects.value || 0}
-                    icon={<Briefcase size={18} weight="fill" />}
+                    title="Virtual Pool"
+                    value={kpis?.totalEmployees.value ? employees.filter(e => (e.utilization || 0) > 0 && (e.utilization || 0) < 80).length : 0}
+                    subValue={`${kpis?.totalEmployees.value ? Math.round((employees.filter(e => (e.utilization || 0) > 0 && (e.utilization || 0) < 80).length / kpis.totalEmployees.value) * 100) : 0}%`}
+                    icon={<Users size={18} weight="fill" />}
                     iconBgColor="bg-purple-100 text-purple-700"
-                    trend={kpis?.activeProjects.trend || { value: 0, direction: 'neutral', isPositive: true }}
-                    history={kpis?.activeProjects.history || []}
-                    onDetailClick={() => navigate('/projects?status=active')}
+                    trend={{ value: 0, direction: 'neutral', isPositive: true }}
+                    history={kpis?.totalEmployees.history || []}
+                    onDetailClick={() => navigate('/employees?filter=virtual_pool')}
                 />
-                {/* Alerts Card - Keeping as simple card for now or should we use TrendCard too? 
-                    Request said "All TOP tracking cards... Total Employees, Bench %, Active Projects" (3 cards).
-                    Usually alerts is separate. I'll leave alerts as is or simplify it since I removed KPICard.
-                    Actually I removed KPICard, so I need to replace Alerts too, or just manually render it.
-                 */}
-                {/* 
-                <Card className="relative overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Alerts
-                        </CardTitle>
-                        <div className="p-1.5 rounded-full bg-orange-100 text-orange-700">
-                            <Bell size={18} weight="fill" />
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col gap-1">
-                            <div className="text-2xl font-bold">{kpis?.alertsCount || 0}</div>
-                            <div className="text-xs text-muted-foreground">
-                                employees at risk or on bench
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card> 
-                */}
             </div>
 
             {/* Main Content Grid */}
@@ -215,7 +207,17 @@ export function Dashboard() {
                                                 onClick={() => navigate(`/employees/${item.employeeId}`)}
                                             >
                                                 <p className="font-medium text-sm hover:text-brand-600 hover:underline">{item.employee}</p>
-                                                <p className="text-xs text-muted-foreground mt-0.5">{item.endDate}</p>
+                                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
+                                                        {item.project} • {item.account || 'N/A'}
+                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-xs text-muted-foreground">{item.endDate}</p>
+                                                        <Badge variant="blue" className="text-[8px] h-3 px-1">
+                                                            {item.skill || 'Frontend'}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div className="flex flex-col items-end gap-1">
                                                 <span className={`text-[10px] font-medium px-2 py-1 rounded-full ${daysLeft <= 5 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
@@ -239,120 +241,87 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                            {(accountMetrics || []).slice(0, 5).map((account) => (
-                                <div key={account.id} className="flex items-center justify-between py-2 border-b last:border-0 border-dashed border-slate-100 dark:border-slate-800">
+                            {accountMetrics.slice(0, 5).map((account) => (
+                                <div 
+                                    key={account.id} 
+                                    className="flex items-center justify-between py-2 border-b last:border-0 border-dashed border-slate-100 dark:border-slate-800 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded px-1 transition-colors"
+                                    onClick={() => navigate(`/projects?accountId=${account.id}`)}
+                                >
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium text-sm">{account.name}</span>
-                                        <span className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded">Total: {account.totalCount}</span>
+                                        <span className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-900 px-1.5 py-0.5 rounded">
+                                            Projects: {account.totalCount}
+                                        </span>
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                        {account.headcountChange !== 0 && (
-                                            <span className={account.headcountChange > 0 ? "text-green-500" : "text-red-500"}>
-                                                {account.headcountChange > 0 ? <CaretUp weight="bold" size={12} /> : <CaretDown weight="bold" size={12} />}
-                                            </span>
-                                        )}
-                                        <span className={`text-sm font-medium ${account.headcountChange > 0 ? "text-green-600" :
-                                            account.headcountChange < 0 ? "text-red-600" : "text-muted-foreground"
-                                            }`}>
-                                            {account.headcountChange > 0 ? `+${account.headcountChange}` : account.headcountChange}
-                                        </span>
+                                        <Badge variant={account.activeCount > 0 ? "green" : "secondary"} className="text-[10px]">
+                                            {account.activeCount} Active
+                                        </Badge>
+                                        <ArrowRight size={12} className="text-slate-300" />
                                     </div>
                                 </div>
                             ))}
-                            {(!accountMetrics || accountMetrics.length === 0) && (
-                                <p className="text-sm text-muted-foreground text-center py-4">No recent activity</p>
+                            {accountMetrics.length === 0 && (
+                                <p className="text-sm text-muted-foreground text-center py-4">No account data available</p>
                             )}
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Bottom Row: Available Talent & Ongoing Projects */}
+            {/* Bottom Row: Ongoing Projects & Nearing Completion */}
             <div className="grid gap-6 lg:grid-cols-2">
-                {/* Available Talent */}
-                <Card className="col-span-1">
+                {/* Active Projects */}
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle>Available Employees</CardTitle>
-                        <Link
-                            to="/employees"
-                            className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 hover:underline"
-                        >
-                            View More <ArrowRight size={12} weight="bold" />
+                        <CardTitle>Active Projects</CardTitle>
+                        <Link to="/projects?status=active" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+                            View All <ArrowRight size={12} />
                         </Link>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                            {employees.filter(e => (e.utilization || 0) < 10).length > 0 ? (
-                                employees
-                                    .filter(e => (e.utilization || 0) < 10)
-                                    .map((employee) => (
-                                        <div
-                                            key={employee.id}
-                                            className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
-                                                    {employee.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium">{employee.name}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {employee.role || 'Employee'}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <Badge variant="green">
-                                                Available
-                                            </Badge>
-                                        </div>
-                                    ))
-                            ) : (
-                                <p className="text-sm text-muted-foreground">No available Employee found</p>
-                            )}
+                            {projects.filter(p => p.status === 'active').slice(0, 5).map((project) => (
+                                <div key={project.id} className="flex items-center justify-between rounded-lg border p-3">
+                                    <div>
+                                        <p className="font-medium text-sm">{project.name}</p>
+                                        <p className="text-xs text-muted-foreground">{project.entity?.name}</p>
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px]">{project.utilization?.length || 0} Members</Badge>
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Ongoing Projects */}
-                <Card className="col-span-1">
+                {/* Projects Nearing Completion */}
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                        <CardTitle>Projects Nearing Completion</CardTitle>
-                        <Link
-                            to="/projects"
-                            className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 hover:underline"
-                        >
-                            View More <ArrowRight size={12} weight="bold" />
+                        <CardTitle>Active Projects Nearing Completion</CardTitle>
+                        <Link to="/projects?status=active&nearing_completion=true" className="text-xs text-brand-600 hover:underline flex items-center gap-1">
+                            View More <ArrowRight size={12} />
                         </Link>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                            {activeProjectsCount > 0 ? (
-                                projects.filter(p => p.status === 'active').map((project) => (
-                                    <div
-                                        key={project.id}
-                                        className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50 transition-colors"
-                                    >
+                            {projects.filter(p => {
+                                if (p.status !== 'active' || !p.end_date) return false;
+                                const daysLeft = Math.ceil((new Date(p.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 && daysLeft <= 30; // Within 30 days
+                            }).map((project) => {
+                                const daysLeft = Math.ceil((new Date(project.end_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                return (
+                                    <div key={project.id} className="flex items-center justify-between rounded-lg border p-3 border-amber-100 bg-amber-50/30">
                                         <div>
-                                            <p className="font-medium">{project.name}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {project.entity?.name}
-                                            </p>
+                                            <p className="font-medium text-sm">{project.name}</p>
+                                            <p className="text-xs text-muted-foreground">{project.entity?.name}</p>
                                         </div>
-                                        <div className="flex flex-col items-end gap-1">
-                                            <Badge variant="outline" className="text-xs">
-                                                {project.utilization?.length || 0} Members
-                                            </Badge>
-                                            {project.end_date && (
-                                                <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                                                    {Math.ceil((new Date(project.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days left
-                                                </span>
-                                            )}
-                                        </div>
+                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-full">
+                                            {daysLeft} days left
+                                        </span>
                                     </div>
-                                ))
-                            ) : (
-                                <p className="text-sm text-muted-foreground">No active projects</p>
-                            )}
+                                );
+                            })}
                         </div>
                     </CardContent>
                 </Card>

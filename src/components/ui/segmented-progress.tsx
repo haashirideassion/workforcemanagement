@@ -86,8 +86,14 @@ const SegmentedProgress = React.forwardRef<HTMLDivElement, SegmentedProgressProp
             if (!isMultiUtilization) {
                 // Default mode: Single color based on total value
                 const filledSegments = Math.round((Math.max(0, Math.min(100, value)) / 100) * segmentCount);
-                if (index < filledSegments) return 'bg-blue-500';
-                return 'bg-gray-400/30 dark:bg-gray-600/40';
+                if (index >= filledSegments) return 'bg-gray-400/30 dark:bg-gray-600/40';
+
+                // Implement color rules: 80+ Green, 50-80 Orange, <50 Red/Blue (Default brand blue)
+                // Actually the requirement is: 80+ Green, 50-80 Orange, <50 Red
+                const utilization = value; // Use 'value' as 'utilization' for clarity in this context
+                if (utilization >= 80) return 'bg-green-500';
+                if (utilization > 50) return 'bg-orange-500';
+                return 'bg-red-500';
             } else {
                 // Multi-utilization mode
                 if (multiSegments.length === 0) return 'bg-gray-400/30 dark:bg-gray-600/40';
@@ -95,7 +101,6 @@ const SegmentedProgress = React.forwardRef<HTMLDivElement, SegmentedProgressProp
                 // Find which segment this index belongs to
                 // We map 0..segmentCount to 0..100%
                 const tickPercentageStart = (index / segmentCount) * 100;
-                // const tickPercentageEnd = ((index + 1) / segmentCount) * 100; // not strictly needed if we check point inclusion
 
                 let currentAccumulated = 0;
                 for (let i = 0; i < multiSegments.length; i++) {

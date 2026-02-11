@@ -131,7 +131,8 @@ export function UtilizationBoard() {
                 const employeeId = active.id as string;
 
                 // Check if already assigned
-                const isAssigned = utilization[projectId]?.includes(employeeId);
+                const currentAssignments = utilization[projectId] || [];
+                const isAssigned = currentAssignments.includes(employeeId);
 
                 if (!isAssigned) {
                     setUtilization(prev => ({

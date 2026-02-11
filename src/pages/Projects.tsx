@@ -32,7 +32,12 @@ function getStatusBadge(status: string) {
         case 'active':
             return <Badge variant="green">Active</Badge>;
         case 'on-hold':
-            return <Badge variant="yellow">On Hold</Badge>;
+            return (
+                <div className="flex flex-col items-end gap-1">
+                    <Badge variant="yellow">On Hold</Badge>
+                    <span className="text-[10px] text-muted-foreground italic">Auto-bench after 7 days</span>
+                </div>
+            );
         case 'completed':
             return <Badge variant="blue">Completed</Badge>;
         case 'proposal':
@@ -50,9 +55,12 @@ export function Projects() {
 
     // Filters
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all');
+    const [statusFilter, setStatusFilter] = useState<string>(() => {
+        if (searchParams.get('nearing_completion') === 'true') return 'near-completion';
+        return searchParams.get('status') || 'all';
+    });
     const [entityFilter, setEntityFilter] = useState<string>('all');
-    const [accountFilter, setAccountFilter] = useState<string>('all');
+    const [accountFilter, setAccountFilter] = useState<string>(searchParams.get('accountId') || 'all');
     const [fromDate, setFromDate] = useState(''); // YYYY-MM-DD
     const [toDate, setToDate] = useState(''); // YYYY-MM-DD
 
@@ -220,6 +228,7 @@ export function Projects() {
                         setEditingProject(null);
                         setFormOpen(true);
                     }}
+                    data-testid="add-project-button"
                 >
                     <Plus size={16} className="mr-2" />
                     Add Project
@@ -340,6 +349,7 @@ export function Projects() {
                             key={project.id}
                             className="cursor-pointer transition-all hover:shadow-md"
                             onClick={() => navigate(`/projects/${project.id}`)}
+                            data-testid={`project-card-${project.id}`}
                         >
                             <CardHeader className="pb-2">
                                 <div className="flex items-center justify-between">

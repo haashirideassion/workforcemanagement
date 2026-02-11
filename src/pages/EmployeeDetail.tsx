@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, EnvelopeSimple, Buildings, Briefcase, Star, Certificate, Upload, Plus, X, File as FileIcon, Image as ImageIcon, Trash, Eye, Info, Phone, CalendarBlank, MapPin, User, PencilSimple } from '@phosphor-icons/react';
+import { ArrowLeft, EnvelopeSimple, Buildings, Briefcase, Star, Certificate, Upload, Plus, X, File as FileIcon, Image as ImageIcon, Trash, Info, Phone, CalendarBlank, MapPin, User, PencilSimple } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,13 +34,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useEmployee } from '@/hooks/useEmployees';
-import { useEntities } from '@/hooks/useEntities';
+import { useEmployee, useUpdateEmployeeAllocations } from '@/hooks/useEmployees';
+import { useProjects } from '@/hooks/useProjects';
+import { useCreateCertification, useDeleteCertification } from '@/hooks/useCertifications';
 
 function getUtilizationCategory(utilization: number) {
     if (utilization >= 80) return { label: 'Fully Utilized', variant: 'green' as const };
-    if (utilization >= 50) return { label: 'Partially Utilized', variant: 'yellow' as const };
-    return { label: 'Available', variant: 'blue' as const };
+    if (utilization >= 50) return { label: 'Partially Utilized', variant: 'orange' as const };
+    return { label: 'Available', variant: 'destructive' as const };
 }
 
 function getProficiencyColor(proficiency: string) {
@@ -54,20 +56,13 @@ function getProficiencyColor(proficiency: string) {
 interface CertificationFormData {
     name: string;
     description: string;
+    expiryDate: string;
     file: File | null;
 }
 
-interface StoredCertification {
-    id: string;
-    name: string;
-    description: string;
-    fileName: string | null;
-    fileType: string | null;
-    fileData: string | null;
-    addedAt: string;
-}
 
-const CERT_STORAGE_KEY = 'employee_certifications';
+
+
 const EMPLOYEE_INFO_KEY = 'employee_extended_info';
 
 interface PastCompany {
@@ -91,20 +86,22 @@ export function EmployeeDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { data: employee, isLoading, error } = useEmployee(id || '');
-    const { data: entities = [] } = useEntities();
+    const { data: projects = [] } = useProjects();
+    const updateAllocations = useUpdateEmployeeAllocations();
 
     // Modal state for adding certification
     const [isAddCertModalOpen, setIsAddCertModalOpen] = useState(false);
     const [certFormData, setCertFormData] = useState<CertificationFormData>({
         name: '',
         description: '',
+        expiryDate: '',
         file: null,
     });
     const [isDragOver, setIsDragOver] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Local certifications stored in localStorage
-    const [localCertifications, setLocalCertifications] = useState<StoredCertification[]>([]);
+    const { mutate: createCertification } = useCreateCertification();
+    const { mutate: deleteCertification } = useDeleteCertification();
 
     // Extended employee info popup state
     const [isInfoPopupOpen, setIsInfoPopupOpen] = useState(false);
@@ -123,28 +120,20 @@ export function EmployeeDetail() {
     // Local Utilization State for Editing
     interface LocalUtilization {
         id: string;
-        project: { name: string };
+        project: { name: string; id?: string };
+        project_id?: string;
         utilization_percent: number | string;
         start_date: string;
         end_date: string | null;
         status: string;
+        role?: string;
     }
     const [localUtilization, setLocalUtilization] = useState<LocalUtilization[]>([]);
     const [isManageUtilizationOpen, setIsManageUtilizationOpen] = useState(false);
 
-    // Load data from localStorage on mount
+    // Load data from localStorage on mount (restored but without localCertifications)
     useEffect(() => {
         if (id) {
-            // Load certifications
-            const storedCerts = localStorage.getItem(`${CERT_STORAGE_KEY}_${id}`);
-            if (storedCerts) {
-                try {
-                    setLocalCertifications(JSON.parse(storedCerts));
-                } catch (e) {
-                    console.error('Failed to parse stored certifications:', e);
-                }
-            }
-
             // Load extended employee info
             const storedInfo = localStorage.getItem(`${EMPLOYEE_INFO_KEY}_${id}`);
             if (storedInfo) {
@@ -175,20 +164,10 @@ export function EmployeeDetail() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, employee]);
 
-    // Save certifications to localStorage whenever they change
-    useEffect(() => {
-        if (id && localCertifications.length > 0) {
-            localStorage.setItem(`${CERT_STORAGE_KEY}_${id}`, JSON.stringify(localCertifications));
-        }
-    }, [id, localCertifications]);
-
-    // Initialize localUtilization from employee data or dummy data
+    // Initialize localUtilization from employee data
     useEffect(() => {
         if (employee) {
-            const today = new Date().toISOString().split('T')[0];
-            const active = employee.utilization_data?.filter(
-                (a) => a.start_date <= today && (!a.end_date || a.end_date >= today)
-            ) || [];
+            const active = employee.utilization_data || [];
 
             if (active.length > 0) {
                 setLocalUtilization(active.map(a => ({
@@ -197,12 +176,7 @@ export function EmployeeDetail() {
                     utilization_percent: a.utilization_percent
                 })) as any);
             } else {
-                // Dummy Data Logic
-                setLocalUtilization([
-                    { id: 'mock1', project: { name: 'ITS' }, utilization_percent: 45, start_date: today, end_date: null, status: 'Active' },
-                    { id: 'mock2', project: { name: 'IITT' }, utilization_percent: 30, start_date: today, end_date: null, status: 'Active' },
-                    { id: 'mock3', project: { name: 'IBCC' }, utilization_percent: 15, start_date: today, end_date: null, status: 'Active' },
-                ]);
+                setLocalUtilization([]);
             }
         }
     }, [employee]);
@@ -238,71 +212,40 @@ export function EmployeeDetail() {
         setIsDragOver(false);
     };
 
-    const fileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = error => reject(error);
-        });
-    };
+    // Note: File storage is not fully implemented in Supabase Storage yet.
+    // For now we will just store metadata or skip file upload if no bucket.
+    // Assuming we just store the certification details.
 
     const handleAddCertification = async () => {
-        let fileData: string | null = null;
+        if (!id) return;
 
-        if (certFormData.file) {
-            try {
-                fileData = await fileToBase64(certFormData.file);
-            } catch (e) {
-                console.error('Failed to convert file to base64:', e);
-            }
-        }
-
-        const newCert: StoredCertification = {
-            id: crypto.randomUUID(),
+        // Skip file base64 for now as it's too large for simple DB text fields usually
+        // and we haven't set up Storage.
+        
+        const newCert = {
+            employee_id: id,
             name: certFormData.name.trim(),
-            description: certFormData.description.trim(),
-            fileName: certFormData.file?.name || null,
-            fileType: certFormData.file?.type || null,
-            fileData,
-            addedAt: new Date().toISOString(),
+            issuer: 'Self-Reported', // or add field to form
+            valid_until: certFormData.expiryDate || null,
         };
 
-        setLocalCertifications(prev => [...prev, newCert]);
-
-        // Reset form and close modal
-        setCertFormData({ name: '', description: '', file: null });
-        setIsAddCertModalOpen(false);
+        createCertification(newCert, {
+            onSuccess: () => {
+                setCertFormData({ name: '', description: '', expiryDate: '', file: null });
+                setIsAddCertModalOpen(false);
+            }
+        });
     };
 
     const handleDeleteCertification = (certId: string) => {
-        setLocalCertifications(prev => {
-            const updated = prev.filter(c => c.id !== certId);
-            if (id) {
-                if (updated.length === 0) {
-                    localStorage.removeItem(`${CERT_STORAGE_KEY}_${id}`);
-                } else {
-                    localStorage.setItem(`${CERT_STORAGE_KEY}_${id}`, JSON.stringify(updated));
-                }
-            }
-            return updated;
-        });
-    };
-
-    const handleViewCertificate = (cert: StoredCertification) => {
-        if (cert.fileData) {
-            const newWindow = window.open();
-            if (newWindow) {
-                if (cert.fileType === 'application/pdf') {
-                    newWindow.document.write(`<iframe src="${cert.fileData}" style="width:100%;height:100%;border:none;"></iframe>`);
-                } else {
-                    newWindow.document.write(`<img src="${cert.fileData}" style="max-width:100%;height:auto;" />`);
-                }
-            }
+        if(confirm('Are you sure you want to delete this certification?')) {
+            deleteCertification(certId);
         }
     };
 
-    const isFormValid = certFormData.name.trim() !== '';
+
+
+    const isFormValid = certFormData.name.trim() !== '' && certFormData.expiryDate !== '';
 
     if (isLoading) {
         return (
@@ -331,19 +274,6 @@ export function EmployeeDetail() {
         localUtilization.reduce((sum, a) => sum + (Number(a.utilization_percent) || 0), 0)
     );
 
-    // Prepare segments for multi-utilization bar
-    const utilizationSegments = localUtilization.map(alloc => ({
-        id: alloc.id,
-        label: alloc.project?.name || 'Unknown Project',
-        value: Number(alloc.utilization_percent) || 0,
-        // Assign colors based on index or ID for consistency in demo
-        color: alloc.id === 'mock1' ? 'bg-blue-500' :
-            alloc.id === 'mock2' ? 'bg-indigo-500' :
-                alloc.id === 'mock3' ? 'bg-emerald-500' : undefined
-    }));
-
-
-
     const today = new Date().toISOString().split('T')[0];
     const utilizationToDisplay = utilization;
 
@@ -368,11 +298,27 @@ export function EmployeeDetail() {
         ]);
     };
 
-    const handleUpdateUtilization = (id: string, field: keyof LocalUtilization | 'projectName', value: any) => {
+    const handleUpdateUtilization = (id: string, field: keyof LocalUtilization | 'projectId' | 'projectName', value: any) => {
         setLocalUtilization(prev => prev.map(a => {
             if (a.id !== id) return a;
+            if (field === 'projectId') {
+                const selectedProject = projects.find(p => p.id === value);
+                return { 
+                    ...a, 
+                    project: selectedProject ? { name: selectedProject.name, id: selectedProject.id } : { name: 'Unknown' },
+                    project_id: value // Maintain project_id if needed
+                };
+            }
             if (field === 'projectName') {
+                // Legacy fallback or if we just want to set name
                 return { ...a, project: { ...a.project, name: value } };
+            }
+            if (field === 'utilization_percent') {
+                // Ensure value is handled as a number and strip leading zeros
+                const valStr = value.toString().replace(/^0+(?=\d)/, '');
+                const parsedValue = valStr === "" ? 0 : parseInt(valStr);
+                const finalValue = isNaN(parsedValue) ? 0 : Math.min(100, Math.max(0, parsedValue));
+                return { ...a, utilization_percent: finalValue };
             }
             return { ...a, [field]: value };
         }));
@@ -382,9 +328,28 @@ export function EmployeeDetail() {
         setLocalUtilization(prev => prev.filter(a => a.id !== id));
     };
 
-    const handleSaveUtilization = () => {
-        // In a real app, this would save to backend
-        setIsManageUtilizationOpen(false);
+    const handleSaveUtilization = async () => {
+        if (!id) return;
+        
+        // Basic validation: Total utilization shouldn't exceed 100%
+        const total = localUtilization.reduce((sum, a) => sum + (Number(a.utilization_percent) || 0), 0);
+        if (total > 100) {
+            toast.error("Total utilization cannot exceed 100%");
+            return;
+        }
+
+        updateAllocations.mutate(
+            { employeeId: id, allocations: localUtilization },
+            {
+                onSuccess: () => {
+                    toast.success("Utilization updated successfully");
+                    setIsManageUtilizationOpen(false);
+                },
+                onError: (error: any) => {
+                    toast.error(`Failed to update utilization: ${error.message}`);
+                }
+            }
+        );
     };
 
     return (
@@ -461,8 +426,6 @@ export function EmployeeDetail() {
                     <SegmentedProgress
                         value={utilizationToDisplay}
                         size="md"
-                        isMultiUtilization={true}
-                        multiSegments={utilizationSegments}
                     />
                     <p className="text-sm text-muted-foreground mt-2">
                         {localUtilization.length} active utilization(s)
@@ -481,10 +444,6 @@ export function EmployeeDetail() {
                         <Star size={16} className="mr-2" />
                         Skills
                     </TabsTrigger>
-                    <TabsTrigger value="performance">
-                        <Star size={16} className="mr-2" />
-                        Performance
-                    </TabsTrigger>
                     <TabsTrigger value="certifications">
                         <Certificate size={16} className="mr-2" />
                         Certifications
@@ -501,6 +460,7 @@ export function EmployeeDetail() {
                                 size="sm"
                                 className="h-8 gap-2"
                                 onClick={() => setIsManageUtilizationOpen(true)}
+                                disabled={employee.status !== 'active'}
                             >
                                 <PencilSimple size={14} />
                                 Edit
@@ -512,6 +472,8 @@ export function EmployeeDetail() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Project</TableHead>
+                                            <TableHead>Role</TableHead>
+                                            <TableHead>Specialization</TableHead>
                                             <TableHead>Utilization</TableHead>
                                             <TableHead>Start Date</TableHead>
                                             <TableHead>End Date</TableHead>
@@ -543,6 +505,8 @@ export function EmployeeDetail() {
                                                             </span>
                                                         ) : 'Unknown'}
                                                     </TableCell>
+                                                    <TableCell className="text-sm">{alloc.role || '-'}</TableCell>
+                                                    <TableCell className="text-sm">{employee.specialization || '-'}</TableCell>
                                                     <TableCell>{alloc.utilization_percent}%</TableCell>
                                                     <TableCell>{alloc.start_date}</TableCell>
                                                     <TableCell>{alloc.end_date}</TableCell>
@@ -626,37 +590,7 @@ export function EmployeeDetail() {
                     </div>
                 </TabsContent>
 
-                {/* Tab 3: Performance - Score out of 5 */}
-                <TabsContent value="performance" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Star size={20} className="text-brand-600" weight="fill" />
-                                Performance Score
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-6">
-                                <div className="text-5xl font-bold text-brand-600">
-                                    {employee.performance_score !== null && employee.performance_score !== undefined ? employee.performance_score.toFixed(1) : 'N/A'}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-lg text-muted-foreground mb-2">out of 5</p>
-                                    <SegmentedProgress
-                                        value={employee.performance_score ? employee.performance_score * 20 : 0}
-                                        size="md"
-                                        className="w-48"
-                                    />
-                                    <div className="flex justify-between mt-2 text-xs text-muted-foreground w-48">
-                                        <span>Poor</span>
-                                        <span>Average</span>
-                                        <span>Excellent</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+
 
                 {/* Tab 4: Certifications - with icons */}
                 <TabsContent value="certifications" className="mt-4">
@@ -679,82 +613,37 @@ export function EmployeeDetail() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {/* Combined certifications from API and localStorage */}
-                            {(employee.certifications && employee.certifications.length > 0) || localCertifications.length > 0 ? (
+                            {/* Combined certifications from API */}
+                            {employee.certifications && employee.certifications.length > 0 ? (
                                 <div className="space-y-3">
                                     {/* API Certifications */}
                                     {employee.certifications?.map((cert) => (
                                         <div
                                             key={cert.id}
-                                            className="flex items-center gap-4 rounded-lg border p-4"
+                                            className="flex items-center gap-4 rounded-lg border p-4 group"
                                         >
                                             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900">
                                                 <Certificate size={24} className="text-brand-600" weight="duotone" />
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-medium">{cert.name}</p>
-                                                <p className="text-sm text-muted-foreground">{cert.issuer}</p>
+                                                <p className="text-sm text-muted-foreground">{cert.issuer || 'Self-Reported'}</p>
                                             </div>
-                                            {cert.valid_until && (
-                                                <Badge variant="outline" className="shrink-0">
-                                                    Valid until {cert.valid_until}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                    {/* Local Certifications from localStorage */}
-                                    {localCertifications.map((cert) => (
-                                        <div
-                                            key={cert.id}
-                                            className="flex items-center gap-4 rounded-lg border p-4 group"
-                                        >
-                                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-100 dark:bg-brand-900">
-                                                {cert.fileType === 'application/pdf' ? (
-                                                    <FileIcon size={24} className="text-brand-600" weight="duotone" />
-                                                ) : cert.fileData ? (
-                                                    <ImageIcon size={24} className="text-brand-600" weight="duotone" />
-                                                ) : (
-                                                    <Certificate size={24} className="text-brand-600" weight="duotone" />
+                                            <div className="flex items-center gap-4">
+                                                {cert.valid_until && (
+                                                    <Badge variant="outline" className="shrink-0">
+                                                        Valid until {cert.valid_until}
+                                                    </Badge>
                                                 )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium">{cert.name}</p>
-                                                {cert.description && (
-                                                    <p className="text-sm text-muted-foreground truncate">{cert.description}</p>
-                                                )}
-                                                {cert.fileName && (
-                                                    <p className="text-xs text-muted-foreground/70 mt-1 truncate">
-                                                        📎 {cert.fileName}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                <Badge variant="secondary" className="text-xs">
-                                                    Added {new Date(cert.addedAt).toLocaleDateString()}
-                                                </Badge>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {cert.fileData && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => handleViewCertificate(cert)}
-                                                            title="View certificate"
-                                                        >
-                                                            <Eye size={16} />
-                                                        </Button>
-                                                    )}
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-destructive hover:text-destructive"
-                                                        onClick={() => handleDeleteCertification(cert.id)}
-                                                        title="Delete certification"
-                                                    >
-                                                        <Trash size={16} />
-                                                    </Button>
-                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={() => handleDeleteCertification(cert.id)}
+                                                    title="Delete certification"
+                                                >
+                                                    <Trash size={16} />
+                                                </Button>
                                             </div>
                                         </div>
                                     ))}
@@ -814,9 +703,20 @@ export function EmployeeDetail() {
                                 <Textarea
                                     id="cert-description"
                                     placeholder="Brief description of the certification..."
-                                    rows={3}
+                                    rows={2}
                                     value={certFormData.description}
                                     onChange={(e) => handleCertFormChange('description', e.target.value)}
+                                />
+                            </div>
+
+                            {/* Expiry Date */}
+                            <div className="space-y-2">
+                                <Label htmlFor="cert-expiry">Expiry Date</Label>
+                                <Input
+                                    id="cert-expiry"
+                                    type="date"
+                                    value={certFormData.expiryDate}
+                                    onChange={(e) => handleCertFormChange('expiryDate', e.target.value)}
                                 />
                             </div>
 
@@ -889,7 +789,7 @@ export function EmployeeDetail() {
                             <Button
                                 variant="outline"
                                 onClick={() => {
-                                    setCertFormData({ name: '', description: '', file: null });
+                                    setCertFormData({ name: '', description: '', expiryDate: '', file: null });
                                     setIsAddCertModalOpen(false);
                                 }}
                             >
@@ -934,16 +834,16 @@ export function EmployeeDetail() {
                                                 <TableRow key={alloc.id}>
                                                     <TableCell>
                                                         <Select
-                                                            value={alloc.project?.name}
-                                                            onValueChange={(val) => handleUpdateUtilization(alloc.id, 'projectName', val)}
+                                                            value={(alloc as any).project?.id || ''} 
+                                                            onValueChange={(val) => handleUpdateUtilization(alloc.id, 'projectId', val)}
                                                         >
                                                             <SelectTrigger className="h-9 w-full">
                                                                 <SelectValue placeholder="Select Project" />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {entities.map(entity => (
-                                                                    <SelectItem key={entity.id} value={entity.name}>
-                                                                        {entity.name}
+                                                                {projects.map(project => (
+                                                                    <SelectItem key={project.id} value={project.id}>
+                                                                        {project.name}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>
@@ -958,7 +858,14 @@ export function EmployeeDetail() {
                                                                 value={alloc.utilization_percent}
                                                                 onChange={(e) => {
                                                                     const val = e.target.value;
-                                                                    handleUpdateUtilization(alloc.id, 'utilization_percent', val === '' ? '' : parseInt(val))
+                                                                    if (val === '') {
+                                                                        handleUpdateUtilization(alloc.id, 'utilization_percent', '');
+                                                                        return;
+                                                                    }
+                                                                    let numVal = parseInt(val);
+                                                                    if (numVal < 0) numVal = 0;
+                                                                    if (numVal > 100) numVal = 100;
+                                                                    handleUpdateUtilization(alloc.id, 'utilization_percent', numVal);
                                                                 }}
                                                                 className="pr-6"
                                                             />
@@ -1014,7 +921,9 @@ export function EmployeeDetail() {
 
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsManageUtilizationOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSaveUtilization}>Save Changes</Button>
+                            <Button onClick={handleSaveUtilization} disabled={updateAllocations.isPending}>
+                                {updateAllocations.isPending ? 'Saving...' : 'Save Changes'}
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

@@ -20,88 +20,12 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-
-// Mock data - utilization represents % effort utilized to projects
-const mockUtilizationData = [
-    {
-        id: '1',
-        name: 'John Doe',
-        entity: 'ITS',
-        utilization: 85,
-        projects: [
-            { id: '1', name: 'Website Redesign' },
-            { id: '2', name: 'Mobile App' }
-        ]
-    },
-    {
-        id: '2',
-        name: 'Jane Smith',
-        entity: 'IBCC',
-        utilization: 60,
-        projects: [
-            { id: '3', name: 'Cloud Migration' }
-        ]
-    },
-    {
-        id: '3',
-        name: 'Mike Johnson',
-        entity: 'IITT',
-        utilization: 45,
-        projects: [
-            { id: '4', name: 'Data Analysis' }
-        ]
-    },
-    {
-        id: '4',
-        name: 'Sarah Williams',
-        entity: 'ITS',
-        utilization: 100,
-        projects: [
-            { id: '1', name: 'Website Redesign' },
-            { id: '5', name: 'API Integration' },
-            { id: '6', name: 'Security Audit' }
-        ]
-    },
-    {
-        id: '5',
-        name: 'David Brown',
-        entity: 'IBCC',
-        utilization: 20,
-        projects: []
-    },
-    {
-        id: '6',
-        name: 'Emily Davis',
-        entity: 'IITT',
-        utilization: 75,
-        projects: [
-            { id: '7', name: 'Network Upgrade' },
-            { id: '4', name: 'Data Analysis' }
-        ]
-    },
-    {
-        id: '7',
-        name: 'Chris Miller',
-        entity: 'ITS',
-        utilization: 0,
-        projects: []
-    },
-    {
-        id: '8',
-        name: 'Lisa Wilson',
-        entity: 'IBCC',
-        utilization: 90,
-        projects: [
-            { id: '3', name: 'Cloud Migration' },
-            { id: '8', name: 'Legacy System Support' }
-        ]
-    },
-];
+import { useEmployees } from '@/hooks/useEmployees';
 
 function getUtilizationCategory(utilization: number) {
     if (utilization >= 80) return { label: 'Fully Utilized', variant: 'green' as const };
     if (utilization > 50) return { label: 'Partially Utilized', variant: 'yellow' as const };
-    return { label: 'Available', variant: 'blue' as const };
+    return { label: 'Available', variant: 'destructive' as const };
 }
 
 export function Utilization() {
@@ -110,27 +34,37 @@ export function Utilization() {
     const [entityFilter, setEntityFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
-    const filteredData = mockUtilizationData.filter((item) => {
+    const { data: employees = [], isLoading } = useEmployees();
+
+    const filteredData = employees.filter((item) => {
         // Entity Filter
-        const matchesEntity = entityFilter === 'all' || item.entity === entityFilter;
+        const matchesEntity = entityFilter === 'all' || item.entity?.name === entityFilter;
 
         // Search Filter (Name or Project)
+        // Check active projects in utilization_data
+        const activeProjects = item.utilization_data?.filter(u => 
+            (!u.end_date || u.end_date >= new Date().toISOString().split('T')[0])
+        ) || [];
+
         const matchesSearch = search === '' ||
             item.name.toLowerCase().includes(search.toLowerCase()) ||
-            item.projects.some(p => p.name.toLowerCase().includes(search.toLowerCase()));
+            activeProjects.some(p => p.project?.name.toLowerCase().includes(search.toLowerCase()));
 
         // Status Filter
+        const utilization = item.utilization || 0;
         let matchesStatus = true;
-        if (statusFilter === 'fully') matchesStatus = item.utilization >= 80;
-        else if (statusFilter === 'partial') matchesStatus = item.utilization > 50 && item.utilization < 80;
-        else if (statusFilter === 'available') matchesStatus = item.utilization <= 50;
+        if (statusFilter === 'fully') matchesStatus = utilization >= 80;
+        else if (statusFilter === 'partial') matchesStatus = utilization > 50 && utilization < 80;
+        else if (statusFilter === 'available') matchesStatus = utilization <= 50;
 
         return matchesEntity && matchesSearch && matchesStatus;
     });
 
-    const fullyUtilizedCount = filteredData.filter(e => e.utilization >= 80).length;
-    const partiallyUtilizedCount = filteredData.filter(e => e.utilization > 50 && e.utilization < 80).length;
-    const availableCount = filteredData.filter(e => e.utilization <= 50).length;
+    const fullyUtilizedCount = filteredData.filter(e => (e.utilization || 0) >= 80).length;
+    const partiallyUtilizedCount = filteredData.filter(e => (e.utilization || 0) > 50 && (e.utilization || 0) < 80).length;
+    const availableCount = filteredData.filter(e => (e.utilization || 0) <= 50).length;
+
+    if (isLoading) return <div className="p-8 text-center">Loading utilization metrics...</div>;
 
     return (
         <div className="space-y-6">
@@ -194,7 +128,7 @@ export function Utilization() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-green-600">{fullyUtilizedCount}</div>
+                        <div className="text-3xl font-bold text-green-600" data-testid="utilization-fully-count">{fullyUtilizedCount}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -204,7 +138,7 @@ export function Utilization() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-yellow-600">{partiallyUtilizedCount}</div>
+                        <div className="text-3xl font-bold text-yellow-600" data-testid="utilization-partial-count">{partiallyUtilizedCount}</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -214,7 +148,7 @@ export function Utilization() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-blue-600">{availableCount}</div>
+                        <div className="text-3xl font-bold text-blue-600" data-testid="utilization-available-count">{availableCount}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -233,21 +167,27 @@ export function Utilization() {
                         <TableBody>
                             {filteredData.length > 0 ? (
                                 filteredData.map((employee) => {
-                                    const category = getUtilizationCategory(employee.utilization);
+                                    const category = getUtilizationCategory(employee.utilization || 0);
+                                    const activeProjects = employee.utilization_data?.filter(u => 
+                                        (!u.end_date || u.end_date >= new Date().toISOString().split('T')[0])
+                                    ) || [];
+
                                     return (
-                                        <TableRow key={employee.id}>
-                                            <TableCell className="pl-6 font-medium">{employee.name}</TableCell>
+                                        <TableRow key={employee.id} data-testid="utilization-row">
+                                            <TableCell className="pl-6 font-medium" data-testid="utilization-employee-name">{employee.name}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-wrap gap-2 max-w-[300px]">
-                                                    {employee.projects.length > 0 ? (
-                                                        employee.projects.map((project, index) => (
+                                                    {activeProjects.length > 0 ? (
+                                                        activeProjects.map((alloc, index) => (
                                                             <Badge
-                                                                key={`${project.id}-${index}`}
+                                                                key={`${alloc.id}-${index}`}
                                                                 variant="secondary"
                                                                 className="cursor-pointer hover:bg-slate-200 transition-colors font-normal text-xs"
-                                                                onClick={() => navigate(`/projects/${project.id}`)}
+                                                                onClick={() => {
+                                                                    if (alloc.project?.id) navigate(`/projects/${alloc.project.id}`);
+                                                                }}
                                                             >
-                                                                {project.name}
+                                                                {alloc.project?.name || 'Unknown Project'}
                                                             </Badge>
                                                         ))
                                                     ) : (
@@ -257,8 +197,8 @@ export function Utilization() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
-                                                    <SegmentedProgress value={employee.utilization} size="sm" className="w-24" />
-                                                    <span className="text-sm">{employee.utilization}%</span>
+                                                    <SegmentedProgress value={employee.utilization || 0} size="sm" className="w-24" />
+                                                    <span className="text-sm">{employee.utilization || 0}%</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>

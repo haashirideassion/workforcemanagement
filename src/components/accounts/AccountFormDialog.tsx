@@ -37,9 +37,12 @@ export function AccountFormDialog({
     const [formData, setFormData] = useState({
         name: '',
         email: '',
-        entity: 'ITS',
-        zone: 'USA',
+        entity: 'ITS' as string,
+        zone: 'USA' as string,
         description: '',
+        website: '',
+        domain: '',
+        billingType: 'Retainer' as 'Retainer' | 'T&M' | 'Fixed',
     });
 
     useEffect(() => {
@@ -50,6 +53,9 @@ export function AccountFormDialog({
                 entity: account?.entity || 'ITS',
                 zone: account?.zone || 'USA',
                 description: account?.description || '',
+                website: account?.website || '',
+                domain: account?.domain || '',
+                billingType: account?.billingType || 'Retainer',
             });
         }
     }, [open, account]);
@@ -65,7 +71,7 @@ export function AccountFormDialog({
                 <DialogHeader>
                     <DialogTitle>{isEditing ? 'Edit Account' : 'Add New Account'}</DialogTitle>
                     <DialogDescription>
-                        {isEditing ? 'Update account details.' : 'Create a new client account to manage projects and utilizations.'}
+                        {isEditing ? 'Update account details and profile information.' : 'Create a new client account to manage projects and resources.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -73,6 +79,7 @@ export function AccountFormDialog({
                         <Label htmlFor="name">Account Name</Label>
                         <Input
                             id="name"
+                            data-testid="account-name-input"
                             placeholder="e.g., Acme Corporation"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -82,6 +89,7 @@ export function AccountFormDialog({
                         <Label htmlFor="email">Client Email</Label>
                         <Input
                             id="email"
+                            data-testid="account-email-input"
                             type="email"
                             placeholder="contact@company.com"
                             value={formData.email}
@@ -94,7 +102,7 @@ export function AccountFormDialog({
                             value={formData.entity}
                             onValueChange={(value) => setFormData({ ...formData, entity: value })}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="account-entity-select">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -112,7 +120,7 @@ export function AccountFormDialog({
                             value={formData.zone}
                             onValueChange={(value) => setFormData({ ...formData, zone: value })}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger data-testid="account-zone-select">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -128,10 +136,51 @@ export function AccountFormDialog({
 
                         </Select>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="website">Website</Label>
+                            <Input
+                                id="website"
+                                data-testid="account-website-input"
+                                placeholder="https://acme.org"
+                                value={formData.website}
+                                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="domain">Domain</Label>
+                            <Input
+                                id="domain"
+                                data-testid="account-domain-input"
+                                placeholder="Technology"
+                                value={formData.domain}
+                                onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="billingType">Account Type (Billing)</Label>
+                        <Select
+                            value={formData.billingType}
+                            onValueChange={(value) => setFormData({ ...formData, billingType: value as any })}
+                        >
+                            <SelectTrigger data-testid="account-billing-select">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectGroup>
+                                    <SelectItem value="Retainer">Retainer</SelectItem>
+                                    <SelectItem value="T&M">T&M</SelectItem>
+                                    <SelectItem value="Fixed">Fixed</SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="grid gap-2">
                         <Label htmlFor="description">Description (Optional)</Label>
                         <Input
                             id="description"
+                            data-testid="account-description-input"
                             placeholder="Brief account description..."
                             value={(formData as any).description || ''}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value } as any)}
@@ -145,6 +194,7 @@ export function AccountFormDialog({
                     <Button
                         className="bg-brand-600 hover:bg-brand-700 text-white"
                         onClick={handleSubmit}
+                        data-testid="account-submit-button"
                     >
                         {isEditing ? 'Save Changes' : 'Add Account'}
                     </Button>

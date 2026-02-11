@@ -122,7 +122,7 @@ export function CommandPalette() {
                 <CommandGroup heading="Navigation">
                     <CommandItem onSelect={() => runCommand(() => navigate('/'))}>
                         <User className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
+                        <span>Workforce Intelligence Summary</span>
                         <CommandShortcut>⌘D</CommandShortcut>
                     </CommandItem>
                     <CommandItem onSelect={() => runCommand(() => navigate('/employees'))}>

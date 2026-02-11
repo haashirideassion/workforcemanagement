@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { useState } from 'react';
 import {
     ArrowLeft,
     Users,
@@ -6,8 +7,6 @@ import {
     DotsThree,
     PencilSimple,
     Archive,
-    TrendUp,
-    WarningCircle,
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,52 +27,12 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AccountFormDialog } from '@/components/accounts/AccountFormDialog';
-import { useState } from 'react';
-import type { Account } from '@/types';
-
-// Mock Data
-const mockAccount = {
-    id: "1",
-    name: "Acme Corporation",
-    type: "Retainer",
-    status: "healthy",
-    healthReason: "All projects on track",
-    activeProjects: 3,
-    utilizedResources: 8,
-    utilization: 85,
-    utilizationTrend: 5,
-};
-
-const mockProjects = [
-    { id: "p1", name: "E-commerce Platform", start: "Jan 2024", end: "Dec 2024", assigned: 4, required: 4, utilization: 90, status: "Active" },
-    { id: "p2", name: "Mobile App Redesign", start: "Mar 2024", end: "Aug 2024", assigned: 3, required: 4, utilization: 75, status: "At Risk" },
-    { id: "p3", name: "Internal Dashboard", start: "Feb 2024", end: "Jun 2024", assigned: 2, required: 2, utilization: 60, status: "Active" },
-];
-
-const mockWorkforce = [
-    { id: "e1", name: "John Doe", role: "Senior Frontend", utilization: 100, type: "Billable", endDate: "Dec 2024", status: "Active" },
-    { id: "e2", name: "Jane Smith", role: "Backend Lead", utilization: 100, type: "Billable", endDate: "Dec 2024", status: "Active" },
-    { id: "e3", name: "Mike Johnson", role: "QA Engineer", utilization: 50, type: "Billable", endDate: "Aug 2024", status: "Ending Soon" },
-    { id: "e4", name: "Sarah Williams", role: "Product Designer", utilization: 100, type: "Billable", endDate: "Jun 2024", status: "Active" },
-    { id: "e5", name: "David Brown", role: "DevOps", utilization: 25, type: "Shared", endDate: "Dec 2024", status: "Active" },
-];
-
-const mockRoleBreakdown = [
-    { role: "Frontend", count: 3, status: "ok" },
-    { role: "Backend", count: 2, status: "ok" },
-    { role: "Design", count: 1, status: "ok" },
-    { role: "QA", count: 1, status: "gap" }, // Showing gap
-    { role: "DevOps", count: 1, status: "ok" },
-];
-
-const mockRisks = [
-    { id: "r1", message: "Mobile App Redesign has 0 active resources", severity: "high" },
-    { id: "r2", message: "2 Employees rolling off to virtual pool in 10 days", severity: "medium" },
-    { id: "r3", message: "Internal Dashboard utilization dropping below 50%", severity: "medium" },
-];
+import type { Account, Project } from '@/types';
+import { useAccount, useUpdateAccount } from '@/hooks/useAccounts';
+import { useProjects } from '@/hooks/useProjects';
 
 function getStatusBadge(status: string) {
-    switch (status.toLowerCase()) {
+    switch (status?.toLowerCase()) {
         case 'healthy':
         case 'active':
             return <Badge variant="green">{status}</Badge>;
@@ -81,22 +40,81 @@ function getStatusBadge(status: string) {
         case 'ending soon':
             return <Badge variant="yellow">{status}</Badge>;
         case 'critical':
+        case 'ended':
             return <Badge variant="destructive">{status}</Badge>;
         default:
             return <Badge variant="secondary">{status}</Badge>;
     }
 }
 
-export function AccountDetail() {
-    const navigate = useNavigate();
+const getRisks = (projects: Project[]) => {
+    const risks = [];
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-    // In a real app, fetch data based on ID
-    // In a real app, fetch data based on ID
-    const account = mockAccount;
+    const endingSoon = projects.filter(p => p.end_date && new Date(p.end_date) <= thirtyDaysFromNow && new Date(p.end_date) >= today);
+    if (endingSoon.length > 0) {
+        risks.push({ id: 'r1', message: `${endingSoon.length} Project(s) ending within 30 days`, severity: 'medium' });
+    }
+
+    const lowUtilProjects = projects.filter(p => p.status === 'active' && (!p.utilization || p.utilization.length === 0));
+    if (lowUtilProjects.length > 0) {
+        risks.push({ id: 'r2', message: `${lowUtilProjects.length} Active project(s) have 0 resources allocated`, severity: 'high' });
+    }
+
+    return risks;
+};
+
+export function AccountDetail() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { data: account, isLoading: accountLoading } = useAccount(id || '');
+    const { data: projects = [], isLoading: projectsLoading } = useProjects({ accountId: id });
+    const { mutate: updateAccount } = useUpdateAccount();
+
     const [formOpen, setFormOpen] = useState(false);
 
+    const isLoading = accountLoading || projectsLoading;
+
+    // Derived Data
+    const workforce = projects.flatMap(p => 
+        (p.utilization || []).map((u: any) => ({
+            id: u.employee?.id,
+            name: u.employee?.name || 'Unknown',
+            role: u.role || u.employee?.role || 'Contributor',
+            utilization: u.utilization_percent,
+            type: u.employee?.employment_type || 'Unknown',
+            endDate: u.end_date || p.end_date || 'Ongoing',
+            status: u.end_date && new Date(u.end_date) < new Date() ? 'Ended' : 'Active', // Simple status
+            avatar: u.employee?.name ? u.employee.name.split(' ').map((n: string) => n[0]).join('') : '?'
+        }))
+    ).filter(w => w.status === 'Active'); // Show only active workforce
+
+    // Deduplicate workforce if employee is on multiple projects for same account?
+    // Usually list them per allocation or unique people? Table header says "Employee", "Role".
+    // If same person on 2 projects, they appear twice?
+    // Let's keep all allocations as "Assigned Workforce" rows.
+
+    const roleCounts = workforce.reduce((acc: Record<string, number>, curr) => {
+        const role = curr.role || 'Other';
+        acc[role] = (acc[role] || 0) + 1;
+        return acc;
+    }, {});
+
+    const roleBreakdown = Object.entries(roleCounts).map(([role, count]) => ({
+        role,
+        count,
+        status: 'ok'
+    }));
+
+    const risks = getRisks(projects);
+
+    if (isLoading) return <div className="p-8 text-center bg-transparent">Loading account details...</div>;
+    if (!account) return <div className="p-8 text-center text-red-500">Account not found</div>;
+
     const handleEditSubmit = (data: Partial<Account>) => {
-        console.log('Updating account:', data);
+        updateAccount({ id: account.id, ...data });
         setFormOpen(false);
     };
 
@@ -112,10 +130,10 @@ export function AccountDetail() {
                         <h1 className="text-2xl font-bold flex items-center gap-3">
                             {account.name}
                             <Badge variant="outline" className="text-sm font-normal">
-                                {account.type}
+                                {account.billingType}
                             </Badge>
                         </h1>
-                        <p className="text-muted-foreground">Client account workforce overview</p>
+                        <p className="text-muted-foreground">{account.description || 'Client account workforce overview'}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -145,9 +163,10 @@ export function AccountDetail() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold flex items-baseline gap-2">
-                            {account.activeProjects}
-                            <span className="text-xs font-normal text-muted-foreground">+1 starting soon</span>
+                            {projects.filter(p => !p.end_date || new Date(p.end_date) > new Date()).length}
+                            <span className="text-xs font-normal text-muted-foreground">Active</span>
                         </div>
+                         {/* Optional subtext */}
                     </CardContent>
                 </Card>
                 <Card>
@@ -156,10 +175,9 @@ export function AccountDetail() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold flex items-baseline gap-2">
-                            {account.utilizedResources}
+                            {new Set(workforce.map(w => w.id)).size}
                             <span className="text-xs font-normal text-muted-foreground">people</span>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">6 Full-time, 2 Partial</div>
                     </CardContent>
                 </Card>
                 <Card>
@@ -169,9 +187,9 @@ export function AccountDetail() {
                     <CardContent>
                         <div className="text-2xl font-bold flex items-baseline gap-2">
                             {account.utilization}%
-                            <span className="text-xs font-medium text-green-500 flex items-center">
-                                <TrendUp size={12} className="mr-1" /> {account.utilizationTrend}%
-                            </span>
+                            <Badge variant="green" className="ml-2 font-normal">
+                                Avg
+                            </Badge>
                         </div>
                     </CardContent>
                 </Card>
@@ -183,7 +201,7 @@ export function AccountDetail() {
                         <div className="flex items-center gap-2 mb-1">
                             {getStatusBadge(account.status)}
                         </div>
-                        <p className="text-xs text-muted-foreground">{account.healthReason}</p>
+                        <p className="text-xs text-muted-foreground">{account.zone} • {account.entity}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -191,46 +209,64 @@ export function AccountDetail() {
             <div className="grid gap-6 lg:grid-cols-3">
                 {/* Left Column (2/3 width) - Projects & Workforce */}
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Active Projects Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Active Projects</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Project Name</TableHead>
-                                        <TableHead>Timeline</TableHead>
-                                        <TableHead>Employees</TableHead>
-                                        <TableHead>Utilization</TableHead>
-                                        <TableHead>Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {mockProjects.map(project => (
-                                        <TableRow key={project.id}>
-                                            <TableCell className="font-medium">{project.name}</TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">{project.start} - {project.end}</TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Users size={16} className="text-muted-foreground" />
-                                                    <span>{project.assigned}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <SegmentedProgress value={project.utilization} size="sm" className="w-20" />
-                                                    <span className="text-xs">{project.utilization}%</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{getStatusBadge(project.status)}</TableCell>
+                    {/* Projects Section */}
+                    <div className="space-y-6">
+                        {/* Active Projects Table */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">Ongoing Projects</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Project Name</TableHead>
+                                            <TableHead>Timeline</TableHead>
+                                            <TableHead>Employees</TableHead>
+                                            <TableHead>Utilization</TableHead>
+                                            <TableHead>Status</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {projects.filter(p => !p.end_date || new Date(p.end_date) > new Date()).map(project => (
+                                            <TableRow key={project.id} className="cursor-pointer" onClick={() => navigate(`/projects/${project.id}`)}>
+                                                <TableCell className="font-medium">{project.name}</TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">
+                                                    {project.start_date || 'N/A'} - {project.end_date || 'Ongoing'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Users size={16} className="text-muted-foreground" />
+                                                        <span>{project.utilization?.length || 0}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <SegmentedProgress 
+                                                            value={Math.round((project.utilization?.reduce((sum, u) => sum + (u.utilization_percent || 0), 0) || 0) / (project.utilization?.length || 1))} 
+                                                            size="sm" 
+                                                            className="w-20" 
+                                                        />
+                                                        <span className="text-xs">
+                                                            {Math.round((project.utilization?.reduce((sum, u) => sum + (u.utilization_percent || 0), 0) || 0) / (project.utilization?.length || 1))}%
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{getStatusBadge(project.status)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {projects.filter(p => !p.end_date || new Date(p.end_date) > new Date()).length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                                    No active projects found
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
 
                     {/* Assigned Workforce Table */}
                     <Card>
@@ -238,7 +274,7 @@ export function AccountDetail() {
                             <CardTitle className="text-lg">Assigned Workforce</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Table>
+                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Employee</TableHead>
@@ -250,12 +286,12 @@ export function AccountDetail() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {mockWorkforce.map(emp => (
-                                        <TableRow key={emp.id}>
+                                    {workforce.map((emp, idx) => (
+                                        <TableRow key={`${emp.id}-${idx}`}>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 text-xs font-bold">
-                                                        {emp.name.split(' ').map(n => n[0]).join('')}
+                                                        {emp.avatar}
                                                     </div>
                                                     <div>
                                                         <div className="font-medium text-sm">{emp.name}</div>
@@ -271,6 +307,13 @@ export function AccountDetail() {
                                             <TableCell>{getStatusBadge(emp.status)}</TableCell>
                                         </TableRow>
                                     ))}
+                                    {workforce.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                No workforce assigned
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>
@@ -286,21 +329,18 @@ export function AccountDetail() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {mockRoleBreakdown.map((item, idx) => (
+                                {roleBreakdown.map((item, idx) => (
                                     <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-muted/40">
                                         <span className="font-medium text-sm">{item.role}</span>
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-bold">{item.count}</span>
-                                            {item.status === 'gap' && (
-                                                <WarningCircle size={14} className="text-yellow-500" />
-                                            )}
                                         </div>
                                     </div>
                                 ))}
                                 <div className="pt-2 border-t border-border mt-2">
                                     <div className="flex justify-between text-sm text-muted-foreground">
                                         <span>Total Roles</span>
-                                        <span>8</span>
+                                        <span>{roleBreakdown.length}</span>
                                     </div>
                                 </div>
                             </div>
@@ -316,20 +356,18 @@ export function AccountDetail() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                {mockRisks.map(risk => (
+                                {risks.map(risk => (
                                     <div key={risk.id} className="flex gap-3 items-start text-sm bg-background/50 p-2 rounded border border-yellow-500/10">
                                         <div className="mt-1 min-w-1.5 h-1.5 rounded-full bg-yellow-500" />
                                         <span className="text-muted-foreground">{risk.message}</span>
                                     </div>
                                 ))}
+                                {risks.length === 0 && (
+                                    <p className="text-sm text-muted-foreground">No critical risks at the moment.</p>
+                                )}
                             </div>
-                            <Button variant="ghost" size="sm" className="w-full mt-4 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-500/10">
-                                View All Risks
-                            </Button>
                         </CardContent>
                     </Card>
-
-                    {/* Quick Actions Removed */}
                 </div>
             </div>
 

@@ -32,6 +32,8 @@ function getStatusBadge(status: string) {
             return <Badge variant="yellow">On Hold</Badge>;
         case 'completed':
             return <Badge variant="blue">Completed</Badge>;
+        case 'proposal':
+            return <Badge variant="outline" className="border-purple-200 text-purple-700 bg-purple-50">Proposal</Badge>;
         default:
             return <Badge variant="secondary">{status}</Badge>;
     }
@@ -133,8 +135,9 @@ export function ProjectDetail() {
     }
     if (project.status === 'completed') progress = 100;
 
-    const totalUtilization = project.utilization?.reduce((sum, a) => sum + a.utilization_percent, 0) || 0;
+    const totalUtilizationSum = project.utilization?.reduce((sum, a) => sum + a.utilization_percent, 0) || 0;
     const teamSize = project.utilization?.length || 0;
+    const averageUtilization = teamSize > 0 ? Math.round(totalUtilizationSum / teamSize) : 0;
 
     // Get available employees from the same entity who are not fully utilized
     const assignedEmployeeIds = new Set(project.utilization?.map(u => u.employee_id) || []);
@@ -210,8 +213,8 @@ export function ProjectDetail() {
                 <Card>
                     <CardContent className="pt-6">
                         <div>
-                            <p className="text-2xl font-bold">{totalUtilization}%</p>
-                            <p className="text-sm text-muted-foreground">Total Utilization</p>
+                            <p className="text-2xl font-bold">{averageUtilization}%</p>
+                            <p className="text-sm text-muted-foreground">Avg. Utilization</p>
                         </div>
                     </CardContent>
                 </Card>

@@ -104,10 +104,12 @@ export function useUpdateUtilization() {
             if (error) throw error;
             return data;
         },
-        onSuccess: () => {
+        onSuccess: (updatedData) => {
             queryClient.invalidateQueries({ queryKey: ['utilization'] });
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['projects'] });
+            queryClient.invalidateQueries({ queryKey: ['project', updatedData.project_id] });
+            queryClient.invalidateQueries({ queryKey: ['employee', updatedData.employee_id] });
         },
     });
 }
@@ -129,6 +131,8 @@ export function useDeleteUtilization() {
             queryClient.invalidateQueries({ queryKey: ['utilization'] });
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['projects'] });
+            queryClient.invalidateQueries({ queryKey: ['project'] });
+            queryClient.invalidateQueries({ queryKey: ['employee'] });
         },
     });
 }

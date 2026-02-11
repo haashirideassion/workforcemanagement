@@ -2,266 +2,79 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { Employee, EmployeeFilters } from '@/types';
 
-// Mock Employees Data for consistent linking
-// Mock Projects for utilization data
-const mockProjects = {
-    alpha: { id: 'p1', name: 'Website Redesign', entity_id: '1', status: 'active', created_at: '', updated_at: '', start_date: '2024-01-01', end_date: '2025-12-31' } as const,
-    beta: { id: 'p2', name: 'Mobile App', entity_id: '1', status: 'active', created_at: '', updated_at: '', start_date: '2024-03-01', end_date: '2025-06-30' } as const,
-    gamma: { id: 'p3', name: 'Cloud Migration', entity_id: '2', status: 'active', created_at: '', updated_at: '', start_date: '2024-02-15', end_date: '2024-11-30' } as const,
-};
+// Helper to calculate utilization from active allocations
+export function calculateUtilization(allocations: any[] = [], referenceDate: Date = new Date()): number {
+    if (!allocations || allocations.length === 0) return 0;
+    
+    const dayStr = referenceDate.toISOString().split('T')[0];
+    
+    const activeAllocations = allocations.filter(a => {
+        // 1. Basic Date Check for the Allocation itself
+        const startDate = a.start_date;
+        const endDate = a.end_date;
+        
+        const isDateActive = startDate && startDate <= dayStr && (!endDate || endDate >= dayStr);
+        if (!isDateActive) return false;
 
-export const mockEmployees: (Employee & { utilization: number })[] = [
-    {
-        id: 'e1',
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        entity_id: '1',
-        employment_type: 'permanent',
-        status: 'active',
-        employee_code: 'EMP001',
-        role: 'Senior Developer',
-        specialization: 'Frontend',
-        experience: 5,
-        performance_score: 4.5,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '1', name: 'ITS', created_at: '' },
-        utilization_data: [
-            { id: 'u1', employee_id: 'e1', project_id: 'p1', utilization_percent: 50, start_date: '2024-01-01', end_date: null, created_at: '', project: mockProjects.alpha as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 50
-    },
-    {
-        id: 'e2',
-        name: 'Jane Smith',
-        email: 'jane.smith@example.com',
-        entity_id: '1',
-        employment_type: 'contractor',
-        status: 'active',
-        employee_code: 'EMP002',
-        role: 'Backend Engineer',
-        specialization: 'Node.js',
-        experience: 3,
-        performance_score: 4.3,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '1', name: 'ITS', created_at: '' },
-        utilization_data: [
-            { id: 'u2', employee_id: 'e2', project_id: 'p1', utilization_percent: 100, start_date: '2024-01-01', end_date: null, created_at: '', project: mockProjects.alpha as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 100
-    },
-    {
-        id: 'e3',
-        name: 'Alice Johnson',
-        email: 'alice.j@example.com',
-        entity_id: '2',
-        employment_type: 'permanent',
-        status: 'active',
-        employee_code: 'EMP003',
-        role: 'Tech Lead',
-        specialization: 'Full Stack',
-        experience: 8,
-        performance_score: 4.8,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '2', name: 'IBCC', created_at: '' },
-        utilization_data: [
-            { id: 'u3', employee_id: 'e3', project_id: 'p2', utilization_percent: 100, start_date: '2024-03-01', end_date: null, created_at: '', project: mockProjects.beta as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 100
-    },
-    {
-        id: 'e6',
-        name: 'Diana Prince',
-        email: 'diana.p@example.com',
-        entity_id: '3',
-        employment_type: 'permanent',
-        status: 'active',
-        role: 'Project Manager',
-        specialization: 'Agile',
-        experience: 10,
-        performance_score: 4.9,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '3', name: 'IITT', created_at: '' },
-        utilization_data: [
-            { id: 'u6', employee_id: 'e6', project_id: 'p3', utilization_percent: 25, start_date: '2024-02-15', end_date: null, created_at: '', project: mockProjects.gamma as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 25
-    },
-    {
-        id: 'e10',
-        name: 'Sarah Connor',
-        email: 'sarah.c@example.com',
-        entity_id: '1',
-        employment_type: 'permanent',
-        status: 'active',
-        role: 'Security Specialist',
-        specialization: 'Cybersecurity',
-        experience: 7,
-        performance_score: 92,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '1', name: 'ITS', created_at: '' },
-        utilization_data: [
-            { id: 'u10', employee_id: 'e10', project_id: 'p1', utilization_percent: 100, start_date: '2024-01-01', end_date: null, created_at: '', project: mockProjects.alpha as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 100
-    },
-    {
-        id: 'e11',
-        name: 'John Wick',
-        email: 'john.w@example.com',
-        entity_id: '2',
-        employment_type: 'contractor',
-        status: 'active',
-        role: 'QA Engineer',
-        specialization: 'Automation',
-        experience: 6,
-        performance_score: 99,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '2', name: 'IBCC', created_at: '' },
-        utilization_data: [
-            { id: 'u11', employee_id: 'e11', project_id: 'p2', utilization_percent: 100, start_date: '2024-03-01', end_date: null, created_at: '', project: mockProjects.beta as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 100
-    },
-    {
-        id: 'e12',
-        name: 'Michael Scott',
-        email: 'michael.s@example.com',
-        entity_id: '1',
-        employment_type: 'permanent',
-        status: 'active',
-        role: 'Product Manager',
-        specialization: 'Agile',
-        experience: 9,
-        performance_score: 85,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '1', name: 'ITS', created_at: '' },
-        utilization_data: [],
-        skills: [],
-        certifications: [],
-        utilization: 60
-    },
-    {
-        id: 'e13',
-        name: 'Pam Beesly',
-        email: 'pam.b@example.com',
-        entity_id: '1',
-        employment_type: 'permanent',
-        status: 'active',
-        role: 'UX Designer',
-        specialization: 'UI/UX',
-        experience: 4,
-        performance_score: 88,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '1', name: 'ITS', created_at: '' },
-        utilization_data: [],
-        skills: [],
-        certifications: [],
-        utilization: 30
-    },
-    {
-        id: 'e14',
-        name: 'Jim Halpert',
-        email: 'jim.h@example.com',
-        entity_id: '2',
-        employment_type: 'permanent',
-        status: 'active',
-        role: 'Sales Engineer',
-        specialization: 'Solutions',
-        experience: 5,
-        performance_score: 91,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '2', name: 'IBCC', created_at: '' },
-        utilization_data: [
-            { id: 'u14', employee_id: 'e14', project_id: 'p2', utilization_percent: 45, start_date: '2024-03-01', end_date: null, created_at: '', project: mockProjects.beta as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 45
-    },
-    {
-        id: 'e15',
-        name: 'Dwight Schrute',
-        email: 'dwight.s@example.com',
-        entity_id: '3',
-        employment_type: 'permanent',
-        status: 'active',
-        role: 'Data Analyst',
-        specialization: 'Analytics',
-        experience: 6,
-        performance_score: 94,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '3', name: 'IITT', created_at: '' },
-        utilization_data: [
-            { id: 'u15', employee_id: 'e15', project_id: 'p3', utilization_percent: 70, start_date: '2024-02-15', end_date: null, created_at: '', project: mockProjects.gamma as any }
-        ],
-        skills: [],
-        certifications: [],
-        utilization: 70
-    },
-    {
-        id: 'e16',
-        name: 'Angela Martin',
-        email: 'angela.m@example.com',
-        entity_id: '3',
-        employment_type: 'permanent',
-        status: 'active',
-        role: 'Accountant',
-        specialization: 'Finance',
-        experience: 8,
-        performance_score: 96,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        entity: { id: '3', name: 'IITT', created_at: '' },
-        utilization_data: [],
-        skills: [],
-        certifications: [],
-        utilization: 0
-    }
-];
+        // 2. Project Status Check
+        const project = a.project;
+        const projectStatus = typeof project === 'object' ? project?.status : project;
+        
+        const isProjectActive = projectStatus === 'active';
+        const isProjectOnHold = projectStatus === 'on-hold';
+        
+        if (isProjectActive) return true;
+        
+        if (isProjectOnHold) {
+            const updatedAt = project?.updated_at ? new Date(project.updated_at) : null;
+            if (!updatedAt) return true; // fallback if no updated_at
+            
+            const diffDays = Math.ceil((referenceDate.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+            return diffDays <= 7;
+        }
+        
+        return false;
+    });
+
+    const total = activeAllocations.reduce((sum, a) => sum + (Number(a.utilization_percent || a.allocation_percent) || 0), 0);
+    return Math.min(100, Math.round(total));
+}
 
 // Fetch all employees with optional filters
 export function useEmployees(filters?: EmployeeFilters) {
     return useQuery({
         queryKey: ['employees', filters],
         queryFn: async () => {
-            // Simulate network delay
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            let data = [...mockEmployees];
+            let query = supabase
+                .from('employees')
+                .select(`
+                    *,
+                    entity:entities(id, name),
+                    utilization_data:allocations(*, utilization_percent:allocation_percent, project:projects(*))
+                `)
+                .order('name');
 
             if (filters?.entity) {
-                data = data.filter(e => e.entity_id === filters.entity);
+                query = query.eq('entity_id', filters.entity);
             }
             if (filters?.employmentType) {
-                data = data.filter(e => e.employment_type === filters.employmentType);
+                query = query.eq('employment_type', filters.employmentType);
             }
             if (filters?.search) {
-                data = data.filter(e => e.name.toLowerCase().includes(filters.search!.toLowerCase()));
+                query = query.ilike('name', `%${filters.search}%`);
+            }
+            if (filters?.utilizationStatus === 'available') {
+                // In-memory filtering if needed or specialized handling
             }
 
-            return data;
+            const { data, error } = await query;
+
+            if (error) throw error;
+
+            return (data as any[]).map(emp => ({
+                ...emp,
+                utilization: calculateUtilization(emp.utilization_data)
+            })) as Employee[];
         },
     });
 }
@@ -273,12 +86,6 @@ export function useEmployee(id: string) {
         queryFn: async () => {
             // Simulate network delay
             await new Promise((resolve) => setTimeout(resolve, 500));
-
-            const employee = mockEmployees.find(e => e.id === id);
-
-            if (employee) {
-                return employee;
-            }
 
             const { data, error } = await supabase
                 .from('employees')
@@ -293,7 +100,11 @@ export function useEmployee(id: string) {
                 .single();
 
             if (error) throw error;
-            return data as Employee;
+            const emp = data as Employee;
+            return {
+                ...emp,
+                utilization: calculateUtilization(emp.utilization_data)
+            };
         },
         enabled: !!id,
     });
@@ -305,17 +116,38 @@ export function useCreateEmployee() {
 
     return useMutation({
         mutationFn: async (employee: Omit<Employee, 'id' | 'created_at' | 'updated_at'>) => {
-            const { data, error } = await supabase
-                .from('employees')
-                .insert(employee)
-                .select()
-                .single();
+            try {
+                // Sanitize input: remove derived fields
+                const {
+                    utilization,
+                    utilization_data,
+                    entity,
+                    employee_skills,
+                    certifications,
+                    ...dbPayload
+                } = employee as any;
 
-            if (error) throw error;
-            return data;
+                const { data, error } = await supabase
+                    .from('employees')
+                    .insert(dbPayload)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                return data;
+            } catch (err) {
+                console.error('Supabase insert failed:', err);
+                throw err;
+            }
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['employees'] });
+        onSuccess: (newEmployee) => {
+            // Update the employees list cache for all active filters
+            queryClient.setQueriesData<Employee[]>({ queryKey: ['employees'] }, (old) => {
+                if (!old) return [newEmployee];
+                return [newEmployee, ...old];
+            });
+            // Optional: Also invalidate to be safe, but setQueriesData handles immediate UI update
+            // queryClient.invalidateQueries({ queryKey: ['employees'] });
         },
     });
 }
@@ -326,19 +158,41 @@ export function useUpdateEmployee() {
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<Employee> & { id: string }) => {
-            const { data, error } = await supabase
-                .from('employees')
-                .update(updates)
-                .eq('id', id)
-                .select()
-                .single();
+            try {
+                // Sanitize input: remove derived fields
+                const {
+                    utilization,
+                    utilization_data,
+                    entity,
+                    employee_skills,
+                    certifications,
+                    created_at,
+                    updated_at,
+                    ...dbPayload
+                } = updates as any;
 
-            if (error) throw error;
-            return data;
+                const { data, error } = await supabase
+                    .from('employees')
+                    .update(dbPayload)
+                    .eq('id', id)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                return data;
+            } catch (err) {
+                console.error('Supabase update failed:', err);
+                throw err;
+            }
         },
-        onSuccess: (_, variables) => {
-            queryClient.invalidateQueries({ queryKey: ['employees'] });
-            queryClient.invalidateQueries({ queryKey: ['employee', variables.id] });
+        onSuccess: (updatedEmployee) => {
+            // Update list cache
+            queryClient.setQueriesData<Employee[]>({ queryKey: ['employees'] }, (old) => {
+                if (!old) return [];
+                return old.map(emp => emp.id === updatedEmployee.id ? { ...emp, ...updatedEmployee } : emp);
+            });
+            // Update individual employee cache
+            queryClient.setQueryData(['employee', updatedEmployee.id], updatedEmployee);
         },
     });
 }
@@ -355,9 +209,63 @@ export function useArchiveEmployee() {
                 .eq('id', id);
 
             if (error) throw error;
+            return id;
         },
-        onSuccess: () => {
+        onSuccess: (id) => {
+            // Update list cache by removing the archived employee or updating its status
+            queryClient.setQueriesData<Employee[]>({ queryKey: ['employees'] }, (old) => {
+                if (!old) return [];
+                // If the UI filters out archived ones, we remove it. 
+                // Currently fetching "active" usually.
+                return old.filter(emp => emp.id !== id);
+            });
+            // Update individual cache
+            queryClient.setQueryData(['employee', id], (old: any) => old ? { ...old, status: 'archived' } : old);
+        },
+    });
+}
+// Update employee allocations
+export function useUpdateEmployeeAllocations() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ employeeId, allocations }: { employeeId: string, allocations: any[] }) => {
+            // Transaction-like behavior: delete existing and insert new
+            // Note: Since this is a simple app, we'll do them sequentially. 
+            // Better would be a RPC call for atomic transaction.
+            
+            // 1. Delete existing allocations for this employee
+            const { error: deleteError } = await supabase
+                .from('allocations')
+                .delete()
+                .eq('employee_id', employeeId);
+            
+            if (deleteError) throw deleteError;
+
+            // 2. Insert new allocations
+            if (allocations.length > 0) {
+                const insertPayload = allocations.map(a => ({
+                    employee_id: employeeId,
+                    project_id: a.projectId,
+                    allocation_percent: a.utilization_percent,
+                    status: a.status,
+                    role: a.role,
+                    start_date: new Date().toISOString().split('T')[0], // Default to today
+                }));
+
+                const { error: insertError } = await supabase
+                    .from('allocations')
+                    .insert(insertPayload);
+                
+                if (insertError) throw insertError;
+            }
+
+            return { success: true };
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['employee', variables.employeeId] });
             queryClient.invalidateQueries({ queryKey: ['employees'] });
-        },
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+        }
     });
 }

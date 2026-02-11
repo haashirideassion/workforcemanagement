@@ -116,6 +116,11 @@ export function ProjectFormDialog({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
+            if (form.status === 'on-hold' && project?.status !== 'on-hold') {
+                if (!confirm('Are you sure you want to put this project on hold? It will impact the utilization of all the allocated resources')) {
+                    return;
+                }
+            }
             onSubmit(form);
             setForm({
                 name: '',

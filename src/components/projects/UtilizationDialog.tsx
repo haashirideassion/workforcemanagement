@@ -259,7 +259,10 @@ export function UtilizationDialog({
                                 min="1"
                                 max="100"
                                 value={form.utilization_percent}
-                                onChange={(e) => handleFieldChange('utilization_percent', parseInt(e.target.value) || 0)}
+                                onChange={(e) => {
+                                    const valStr = e.target.value.replace(/^0+(?=\d)/, '');
+                                    handleFieldChange('utilization_percent', parseInt(valStr) || 0);
+                                }}
                             />
                             <span className="text-muted-foreground">%</span>
                         </div>

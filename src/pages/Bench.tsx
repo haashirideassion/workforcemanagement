@@ -162,14 +162,14 @@ export function Bench() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <SegmentedProgress value={employee.utilization} size="sm" className="w-20" />
+                                            <SegmentedProgress value={employee.utilization || 0} size="sm" className="w-20" />
                                             <span className="text-sm text-muted-foreground">
-                                                {employee.utilization}%
+                                                {employee.utilization || 0}%
                                             </span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        {getUtilizationBadge(employee.utilization)}
+                                        {getUtilizationBadge(employee.utilization || 0)}
                                     </TableCell>
                                     <TableCell>
                                         <DropdownMenu>

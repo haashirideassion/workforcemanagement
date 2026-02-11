@@ -65,13 +65,13 @@ function getUtilizationBadge(utilization: number) {
     );
   } else if (utilization >= 50) {
     return (
-      <Badge variant="yellow">
+      <Badge variant="orange">
         Partially Utilized
       </Badge>
     );
   } else {
     return (
-      <Badge variant="blue">
+      <Badge variant="destructive">
         Available
       </Badge>
     );
@@ -83,7 +83,7 @@ import { useSearchParams } from "react-router-dom";
 export function Employees() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialFilter = searchParams.get('filter') as 'all' | 'assigned' | 'virtual_pool' | 'benched' || "all";
+  const initialFilter = searchParams.get('filter') as 'all' | 'assigned' | 'virtual_pool' | 'benched' | 'bench_extended' | 'on-hold' || "all";
 
   const [search, setSearch] = useState("");
   const [entityFilter, setEntityFilter] = useState("all");
@@ -95,6 +95,7 @@ export function Employees() {
       case 'assigned': return { range: [80, 100], statuses: ['fully'] };
       case 'virtual_pool': return { range: [1, 79], statuses: ['partial'] };
       case 'benched': return { range: [0, 0], statuses: ['available'] };
+      case 'bench_extended': return { range: [0, 39], statuses: ['available', 'partial'] };
       case 'all':
       default: return { range: [0, 100], statuses: [] };
     }
@@ -111,6 +112,7 @@ export function Employees() {
     if (min === 80 && max === 100) return 'assigned';
     if (min === 1 && max === 79) return 'virtual_pool';
     if (min === 0 && max === 0) return 'benched';
+    if (min === 0 && max === 39) return 'bench_extended';
     return 'custom';
   };
   const currentTab = getTabValue();
@@ -138,11 +140,12 @@ export function Employees() {
   const archiveEmployee = useArchiveEmployee();
 
   // Counts for tabs (calculated from full dataset)
+  const activeEmployees = employees.filter(e => e.status === 'active');
   const counts = {
-    all: employees.length,
-    assigned: employees.filter(e => (e.utilization || 0) >= 80).length,
-    virtual_pool: employees.filter(e => (e.utilization || 0) > 0 && (e.utilization || 0) < 80).length,
-    benched: employees.filter(e => (e.utilization || 0) === 0).length,
+    all: activeEmployees.length,
+    assigned: activeEmployees.filter(e => (e.utilization || 0) >= 80).length,
+    virtual_pool: activeEmployees.filter(e => (e.utilization || 0) > 0 && (e.utilization || 0) < 80).length,
+    benched: activeEmployees.filter(e => (e.utilization || 0) === 0).length,
   };
 
   const filteredEmployees = employees.filter((emp) => {
@@ -154,6 +157,9 @@ export function Employees() {
     const ut = emp.utilization || 0;
     const matchesUtilization = ut >= utilizationRange[0] && ut <= utilizationRange[1];
 
+    // For specific utilization tabs, only show active employees to match counts and dashboard
+    if (currentTab !== 'all' && emp.status !== 'active') return false;
+
     return matchesSearch && matchesEntity && matchesType && matchesUtilization;
   });
 
@@ -164,7 +170,7 @@ export function Employees() {
   const handleFormSubmit = (values: EmployeeFormData, extendedInfo?: ExtendedEmployeeInfo) => {
     if (editingEmployee) {
       updateEmployee.mutate(
-        { id: editingEmployee.id, ...values },
+        { id: editingEmployee.id, ...values } as Partial<Employee> & { id: string },
         {
           onSuccess: () => {
             setFormOpen(false);
@@ -178,7 +184,7 @@ export function Employees() {
       );
     } else {
       createEmployee.mutate(
-        { ...values, status: "active" },
+        { ...values, status: values.status || "active" } as any,
         {
           onSuccess: (newEmployee) => {
             // Save extended info to localStorage if provided
@@ -235,7 +241,7 @@ export function Employees() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">Employees</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your workforce directory and utilizations
+            Manage your workforce directory and utilization
           </p>
         </div>
         <Button
@@ -301,10 +307,10 @@ export function Employees() {
         <CardContent>
           <Tabs value={currentTab} onValueChange={(v) => handleTabChange(v)} className="px-6 pt-4 mb-2">
             <TabsList>
-              <TabsTrigger value="all">All ({counts.all})</TabsTrigger>
-              <TabsTrigger value="assigned">Utilized ({counts.assigned})</TabsTrigger>
-              <TabsTrigger value="virtual_pool">Virtual Pool ({counts.virtual_pool})</TabsTrigger>
-              <TabsTrigger value="benched">Benched ({counts.benched})</TabsTrigger>
+              <TabsTrigger value="all" data-testid="tab-all">All ({counts.all})</TabsTrigger>
+              <TabsTrigger value="assigned" data-testid="tab-utilized">Utilized ({counts.assigned})</TabsTrigger>
+              <TabsTrigger value="virtual_pool" data-testid="tab-virtual-pool">Virtual Pool ({counts.virtual_pool})</TabsTrigger>
+              <TabsTrigger value="benched" data-testid="tab-benched">Benched ({counts.benched})</TabsTrigger>
             </TabsList>
           </Tabs>
           <Table>
@@ -327,6 +333,7 @@ export function Employees() {
                     <TableRow
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => navigate(`/employees/${employee.id}`)}
+                      data-testid={`employee-row-${employee.id}`}
                     >
                       <TableCell>
                         <span className="text-sm font-medium text-muted-foreground">
@@ -378,14 +385,14 @@ export function Employees() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <SegmentedProgress value={employee.utilization} size="sm" className="w-20" />
+                          <SegmentedProgress value={employee.utilization || 0} size="sm" className="w-20" />
                           <span className="text-sm text-muted-foreground">
-                            {employee.utilization}%
+                            {employee.utilization || 0}%
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {getUtilizationBadge(employee.utilization)}
+                        {getUtilizationBadge(employee.utilization || 0)}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -399,13 +406,20 @@ export function Employees() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => navigate(`/employees/${employee.id}`)}>
+                            <DropdownMenuItem 
+                              disabled={employee.status !== 'active'}
+                              onClick={() => navigate(`/employees/${employee.id}`)}
+                            >
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleEditClick(employee as any, e)}>
+                            <DropdownMenuItem 
+                              disabled={employee.status !== 'active'}
+                              onClick={(e) => handleEditClick(employee as any, e)}
+                            >
                               Edit Employee
                             </DropdownMenuItem>
                             <DropdownMenuItem
+                              disabled={employee.status !== 'active'}
                               className="text-red-600"
                               onClick={(e) => handleDeactivate(employee.id, e)}
                             >
@@ -418,16 +432,21 @@ export function Employees() {
                   </ContextMenuTrigger>
                   <ContextMenuContent>
                     <ContextMenuItem
+                      disabled={employee.status !== 'active'}
                       onSelect={() => navigate(`/employees/${employee.id}`)}
                     >
                       View Details
                     </ContextMenuItem>
-                    <ContextMenuItem onSelect={(e) => handleEditClick(employee as any, e as any)}>
+                    <ContextMenuItem 
+                      disabled={employee.status !== 'active'}
+                      onSelect={(e) => handleEditClick(employee as any, e as any)}
+                    >
                       Edit Employee
                     </ContextMenuItem>
-                    <ContextMenuItem>Assign to Project</ContextMenuItem>
+                    <ContextMenuItem disabled={employee.status !== 'active'}>Assign to Project</ContextMenuItem>
                     <ContextMenuSeparator />
                     <ContextMenuItem
+                      disabled={employee.status !== 'active'}
                       className="text-red-500"
                       onSelect={(e) => handleDeactivate(employee.id, e)}
                     >

@@ -1,4 +1,5 @@
-import { MagnifyingGlass, Plus } from '@phosphor-icons/react';
+import { useState } from 'react';
+import { MagnifyingGlass, Plus, ChartBar, CheckCircle } from '@phosphor-icons/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,111 +12,164 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-
-// Mock data
-const mockSkills = [
-    { id: '1', name: 'React', category: 'Frontend', employeeCount: 25, gap: false },
-    { id: '2', name: 'Node.js', category: 'Backend', employeeCount: 18, gap: false },
-    { id: '3', name: 'Python', category: 'Backend', employeeCount: 12, gap: false },
-    { id: '4', name: 'TypeScript', category: 'Frontend', employeeCount: 22, gap: false },
-    { id: '5', name: 'AWS', category: 'Cloud', employeeCount: 8, gap: true },
-    { id: '6', name: 'Kubernetes', category: 'DevOps', employeeCount: 4, gap: true },
-    { id: '7', name: 'Machine Learning', category: 'AI/ML', employeeCount: 3, gap: true },
-    { id: '8', name: 'PostgreSQL', category: 'Database', employeeCount: 15, gap: false },
-];
+import { SkillFormDialog } from '@/components/skills/SkillFormDialog';
+import { useSkills, useCreateSkill } from '@/hooks/useSkills';
+import { toast } from 'sonner';
 
 export function Skills() {
+    const [search, setSearch] = useState('');
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const { data: skills = [], isLoading } = useSkills();
+    const createSkill = useCreateSkill();
+
+    if (isLoading) {
+        return <div className="p-8 text-center text-muted-foreground italic">Crunching skills data...</div>;
+    }
+
+    const filteredSkills = skills.filter(s => 
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        (s.category?.toLowerCase() || '').includes(search.toLowerCase())
+    );
+
+    const wellCoveredCount = skills.filter(s => !s.gap).length;
+
+
+    const handleAddSkill = (values: { name: string; category: string }) => {
+        createSkill.mutate(values, {
+            onSuccess: () => {
+                toast.success(`Skill "${values.name}" added successfully`);
+                setIsAddDialogOpen(false);
+            },
+            onError: (error: any) => {
+                toast.error(`Failed to add skill: ${error.message}`);
+            }
+        });
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold">Skills Directory</h1>
-                    <p className="text-muted-foreground">
-                        Manage skills and identify gaps in your workforce
+                    <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">Skills Directory</h1>
+                    <p className="text-muted-foreground mt-1">
+                        Map your organizational expertise and identify strategic gaps
                     </p>
                 </div>
-                <Button className="bg-brand-600 hover:bg-brand-700 text-white">
-                    <Plus size={16} className="mr-2" />
+                <Button 
+                    className="bg-brand-600 hover:bg-brand-700 text-white shadow-lg hover:shadow-xl transition-all"
+                    onClick={() => setIsAddDialogOpen(true)}
+                >
+                    <Plus size={16} className="mr-2" weight="bold" />
                     Add Skill
                 </Button>
             </div>
 
-            {/* Summary */}
+            {/* Summary Metrics */}
             <div className="grid gap-4 sm:grid-cols-3">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="text-3xl font-bold">{mockSkills.length}</div>
-                        <p className="text-sm text-muted-foreground">Total Skills</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="text-3xl font-bold text-brand-600">
-                            {mockSkills.filter(s => !s.gap).length}
+                <Card className="overflow-hidden relative">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-brand-50 rounded-xl">
+                                <ChartBar size={24} className="text-brand-600" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">{skills.length}</div>
+                                <p className="text-sm text-muted-foreground font-medium">Total Skills</p>
+                            </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">Well-covered Skills</p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="text-3xl font-bold text-red-600">
-                            {mockSkills.filter(s => s.gap).length}
+                <Card className="overflow-hidden relative">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-green-50 rounded-xl">
+                                <CheckCircle size={24} className="text-green-600" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold text-green-600">
+                                    {wellCoveredCount}
+                                </div>
+                                <p className="text-sm text-muted-foreground font-medium">Well-covered</p>
+                            </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">Skill Gaps</p>
                     </CardContent>
                 </Card>
+
             </div>
 
-            {/* Search */}
-            <Card>
-                <CardContent className="p-4">
-                    <div className="relative max-w-md">
-                        <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-                        <Input placeholder="Search skills..." className="pl-9" />
+            {/* Content Card */}
+            <Card className="border-none shadow-md">
+                <CardHeader className="pb-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <CardTitle className="text-xl">All Knowledge Areas</CardTitle>
+                        <div className="relative w-full md:w-72">
+                            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                            <Input 
+                                placeholder="Filter by name or category..." 
+                                className="pl-9 h-10" 
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="font-semibold">Skill</TableHead>
+                                    <TableHead className="font-semibold">Category</TableHead>
+                                    <TableHead className="font-semibold">Employees</TableHead>
+                                    <TableHead className="font-semibold">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredSkills.length > 0 ? filteredSkills.map((skill) => (
+                                    <TableRow key={skill.id} className="hover:bg-muted/30 transition-colors">
+                                        <TableCell className="font-medium">{skill.name}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="font-normal capitalize">
+                                                {skill.category || 'General'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold">{skill.employeeCount}</span>
+                                                <span className="text-muted-foreground text-xs uppercase letter-spacing-wide">members</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {skill.gap ? (
+                                                <Badge variant="destructive" className="font-normal">
+                                                    Gap Identified
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="green" className="font-normal">
+                                                    Well Covered
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center py-12 text-muted-foreground italic">
+                                            No skills match your search criteria.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Skills Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>All Skills</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Skill</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>Employees</TableHead>
-                                <TableHead>Coverage</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {mockSkills.map((skill) => (
-                                <TableRow key={skill.id}>
-                                    <TableCell className="font-medium">{skill.name}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">{skill.category}</Badge>
-                                    </TableCell>
-                                    <TableCell>{skill.employeeCount} employees</TableCell>
-                                    <TableCell>
-                                        {skill.gap ? (
-                                            <Badge variant="destructive">
-                                                Gap Identified
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="green">
-                                                Well Covered
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            <SkillFormDialog 
+                open={isAddDialogOpen} 
+                onOpenChange={setIsAddDialogOpen} 
+                onSubmit={handleAddSkill}
+                isLoading={createSkill.isPending}
+            />
         </div>
     );
 }

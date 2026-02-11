@@ -16,8 +16,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { ArrowRight, Plus, X } from '@phosphor-icons/react';
-import type { Employee, Entity } from '@/types';
+import { ArrowRight, Plus, X, Info } from '@phosphor-icons/react';
+import type { Employee, Entity, EmployeeStatus } from '@/types';
 
 export interface EmployeeFormData {
     name: string;
@@ -27,7 +27,10 @@ export interface EmployeeFormData {
     experience: number;
     entity_id: string;
     employment_type: 'permanent' | 'retainer' | 'intern' | 'contractor';
-    performance_score: number | null;
+    primary_skills: string;
+    secondary_skills: string;
+    status: EmployeeStatus;
+    utilization: number;
 }
 
 export interface ExtendedEmployeeInfo {
@@ -68,7 +71,10 @@ export function EmployeeFormDialog({
         experience: 0,
         entity_id: '',
         employment_type: 'permanent',
-        performance_score: null,
+        primary_skills: '',
+        secondary_skills: '',
+        status: 'active',
+        utilization: 0,
     });
     const [extendedInfo, setExtendedInfo] = useState<ExtendedEmployeeInfo>({
         dateOfJoining: '',
@@ -79,6 +85,7 @@ export function EmployeeFormDialog({
         designation: '',
         currentRole: '',
     });
+    const [countryCode, setCountryCode] = useState('+91');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [newCompany, setNewCompany] = useState({ name: '', role: '', duration: '' });
 
@@ -93,17 +100,29 @@ export function EmployeeFormDialog({
                 experience: employee?.experience || 0,
                 entity_id: employee?.entity_id || '',
                 employment_type: employee?.employment_type || 'permanent',
-                performance_score: employee?.performance_score || null,
+                primary_skills: (employee as any)?.primary_skills || '',
+                secondary_skills: (employee as any)?.secondary_skills || '',
+                status: employee?.status || 'active',
+                utilization: employee?.utilization || 0,
             });
+            // Parse phone number to separate country code if possible
+            let initialPhone = '';
+            
+            if (employee && (employee as any).phone_number) {
+                 // Simple check for now, can be improved
+                 initialPhone = (employee as any).phone_number;
+            }
+
             setExtendedInfo({
                 dateOfJoining: '',
                 pastExperience: '',
-                phoneNumber: '',
+                phoneNumber: initialPhone,
                 personalEmail: '',
                 pastCompanies: [],
                 designation: '',
                 currentRole: '',
             });
+            setCountryCode('+91');
             setErrors({});
             setNewCompany({ name: '', role: '', duration: '' });
         }
@@ -122,6 +141,13 @@ export function EmployeeFormDialog({
 
     const handleExtendedChange = (field: keyof ExtendedEmployeeInfo, value: any) => {
         setExtendedInfo(prev => ({ ...prev, [field]: value }));
+         if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
     };
 
     const validateStep1 = () => {
@@ -162,9 +188,40 @@ export function EmployeeFormDialog({
         }));
     };
 
+    const validateStep2 = () => {
+        const newErrors: Record<string, string> = {};
+        
+        if (extendedInfo.phoneNumber) {
+             if (countryCode === '+91') {
+                // Regex for 10 digits
+                if (!/^\d{10}$/.test(extendedInfo.phoneNumber)) {
+                    newErrors.phoneNumber = 'India numbers must be exactly 10 digits';
+                }
+             }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+
     const handleSubmitWithExtended = () => {
-        onSubmit(form, extendedInfo);
-        resetForm();
+        if (validateStep2()) {
+             // Combine country code and phone number if needed, or send as is
+             // For now, assuming backend handles it or we send as is. 
+             // If we need to combine:
+             // const finalPhone = `${countryCode} ${extendedInfo.phoneNumber}`;
+             // But extendedInfo has phoneNumber property. 
+             // Let's attach country code or update the string.
+             
+             const finalData = {
+                 ...extendedInfo,
+                 phoneNumber: extendedInfo.phoneNumber ? `${countryCode} ${extendedInfo.phoneNumber}` : ''
+             };
+
+            onSubmit(form, finalData);
+            resetForm();
+        }
     };
 
     const handleSkip = () => {
@@ -181,7 +238,10 @@ export function EmployeeFormDialog({
             experience: 0,
             entity_id: '',
             employment_type: 'permanent',
-            performance_score: null,
+            primary_skills: '',
+            secondary_skills: '',
+            status: 'active',
+            utilization: 0,
         });
         setExtendedInfo({
             dateOfJoining: '',
@@ -213,6 +273,12 @@ export function EmployeeFormDialog({
                     </DialogHeader>
 
                     <form onSubmit={handleSubmitEdit} className="space-y-4">
+                        {isEditing && form.status !== 'active' && (
+                            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-sm border border-amber-200 dark:border-amber-800 mb-4 flex items-start gap-2">
+                                <Info size={18} className="shrink-0 mt-0.5" />
+                                <p>This employee is currently <strong>{form.status}</strong>. To edit their details, first change their status back to <strong>Active</strong>.</p>
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <label htmlFor="name" className="text-sm font-medium">
                                 Full Name
@@ -222,6 +288,7 @@ export function EmployeeFormDialog({
                                 placeholder="John Doe"
                                 value={form.name}
                                 onChange={(e) => handleFieldChange('name', e.target.value)}
+                                disabled={isEditing && form.status !== 'active'}
                             />
                             {errors.name && (
                                 <p className="text-sm text-red-500">{errors.name}</p>
@@ -237,6 +304,7 @@ export function EmployeeFormDialog({
                                 placeholder="EMP001"
                                 value={form.employee_code}
                                 onChange={(e) => handleFieldChange('employee_code', e.target.value)}
+                                disabled={isEditing && form.status !== 'active'}
                             />
                         </div>
 
@@ -250,6 +318,7 @@ export function EmployeeFormDialog({
                                 type="email"
                                 value={form.email}
                                 onChange={(e) => handleFieldChange('email', e.target.value)}
+                                disabled={isEditing && form.status !== 'active'}
                             />
                             {errors.email && (
                                 <p className="text-sm text-red-500">{errors.email}</p>
@@ -263,6 +332,7 @@ export function EmployeeFormDialog({
                                     placeholder="e.g. Senior Developer"
                                     value={form.role}
                                     onChange={(e) => handleFieldChange('role', e.target.value)}
+                                    disabled={isEditing && form.status !== 'active'}
                                 />
                             </div>
                             <div className="space-y-2">
@@ -273,7 +343,11 @@ export function EmployeeFormDialog({
                                     step="0.5"
                                     placeholder="e.g. 5"
                                     value={form.experience || ''}
-                                    onChange={(e) => handleFieldChange('experience', parseFloat(e.target.value))}
+                                    onChange={(e) => {
+                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
+                                        handleFieldChange('experience', parseFloat(valStr) || 0);
+                                    }}
+                                    disabled={isEditing && form.status !== 'active'}
                                 />
                             </div>
                         </div>
@@ -284,6 +358,7 @@ export function EmployeeFormDialog({
                                 <Select
                                     value={form.entity_id}
                                     onValueChange={(val) => handleFieldChange('entity_id', val)}
+                                    disabled={isEditing && form.status !== 'active'}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select entity" />
@@ -306,6 +381,7 @@ export function EmployeeFormDialog({
                                 <Select
                                     value={form.employment_type}
                                     onValueChange={(val) => setForm({ ...form, employment_type: val as 'permanent' | 'retainer' | 'intern' | 'contractor' })}
+                                    disabled={isEditing && form.status !== 'active'}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select type" />
@@ -320,26 +396,74 @@ export function EmployeeFormDialog({
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label htmlFor="performance_score" className="text-sm font-medium">
-                                Performance Score (0-5)
-                            </label>
-                            <Input
-                                id="performance_score"
-                                type="number"
-                                min="0"
-                                max="5"
-                                step="0.1"
-                                placeholder="4.5"
-                                value={form.performance_score ?? ''}
-                                onChange={(e) => setForm({
-                                    ...form,
-                                    performance_score: e.target.value ? parseFloat(e.target.value) : null
-                                })}
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Primary Skills</label>
+                                <Input
+                                    placeholder="e.g. React, Node.js"
+                                    value={form.primary_skills}
+                                    onChange={(e) => handleFieldChange('primary_skills', e.target.value)}
+                                    disabled={isEditing && form.status !== 'active'}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Secondary Skills</label>
+                                <Input
+                                    placeholder="e.g. AWS, Figma"
+                                    value={form.secondary_skills}
+                                    onChange={(e) => handleFieldChange('secondary_skills', e.target.value)}
+                                    disabled={isEditing && form.status !== 'active'}
+                                />
+                            </div>
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Status</label>
+                                <Select
+                                    value={form.status}
+                                    onValueChange={(val) => handleFieldChange('status', val as EmployeeStatus)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="on-hold">On-Hold</SelectItem>
+                                        <SelectItem value="archived">Archived</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Utilization (%)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={form.utilization}
+                                    onChange={(e) => {
+                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
+                                        handleFieldChange('utilization', parseInt(valStr) || 0);
+                                    }}
+                                    disabled={form.status !== 'active'}
+                                />
+                            </div>
+                        </div>
+
+                        {form.status === 'on-hold' && (
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 text-sm border border-yellow-200 dark:border-yellow-800">
+                                <Info size={18} />
+                                <p>If on-hold exceeds 7 days, employee will be moved to Bench</p>
+                            </div>
+                        )}
+
                         <div className="flex justify-end gap-3 pt-4">
+                            {isEditing && form.status !== 'active' && (
+                                <p className="text-sm text-amber-600 flex items-center gap-1.5 mr-auto">
+                                    <Info size={16} />
+                                    Only active employees can be edited
+                                </p>
+                            )}
                             <Button
                                 type="button"
                                 variant="outline"
@@ -347,13 +471,14 @@ export function EmployeeFormDialog({
                             >
                                 Cancel
                             </Button>
-                            <Button
-                                type="submit"
-                                className="bg-brand-600 hover:bg-brand-700 text-white"
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Saving...' : 'Save Changes'}
-                            </Button>
+                                <Button
+                                    type="submit"
+                                    className="bg-brand-600 hover:bg-brand-700 text-white"
+                                    disabled={isLoading || (isEditing && form.status !== 'active')}
+                                    data-testid="employee-save-button"
+                                >
+                                    {isLoading ? 'Saving...' : 'Save Changes'}
+                                </Button>
                         </div>
                     </form>
                 </DialogContent>
@@ -439,7 +564,10 @@ export function EmployeeFormDialog({
                                     step="0.5"
                                     placeholder="e.g. 5"
                                     value={form.experience || ''}
-                                    onChange={(e) => handleFieldChange('experience', parseFloat(e.target.value))}
+                                    onChange={(e) => {
+                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
+                                        handleFieldChange('experience', parseFloat(valStr) || 0);
+                                    }}
                                 />
                             </div>
                         </div>
@@ -486,24 +614,64 @@ export function EmployeeFormDialog({
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label htmlFor="performance_score" className="text-sm font-medium">
-                                Performance Score (0-5)
-                            </label>
-                            <Input
-                                id="performance_score"
-                                type="number"
-                                min="0"
-                                max="5"
-                                step="0.1"
-                                placeholder="4.5"
-                                value={form.performance_score ?? ''}
-                                onChange={(e) => setForm({
-                                    ...form,
-                                    performance_score: e.target.value ? parseFloat(e.target.value) : null
-                                })}
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Primary Skills</label>
+                                <Input
+                                    placeholder="e.g. React, Node.js"
+                                    value={form.primary_skills}
+                                    onChange={(e) => handleFieldChange('primary_skills', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Secondary Skills</label>
+                                <Input
+                                    placeholder="e.g. AWS, Figma"
+                                    value={form.secondary_skills}
+                                    onChange={(e) => handleFieldChange('secondary_skills', e.target.value)}
+                                />
+                            </div>
                         </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Status</label>
+                                <Select
+                                    value={form.status}
+                                    onValueChange={(val) => handleFieldChange('status', val as EmployeeStatus)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="on-hold">On-Hold</SelectItem>
+                                        <SelectItem value="archived">Archived</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Utilization (%)</label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={form.utilization}
+                                    onChange={(e) => {
+                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
+                                        handleFieldChange('utilization', parseInt(valStr) || 0);
+                                    }}
+                                    disabled={form.status !== 'active'}
+                                />
+                            </div>
+                        </div>
+
+                        {form.status === 'on-hold' && (
+                            <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 text-sm border border-yellow-200 dark:border-yellow-800">
+                                <Info size={18} />
+                                <p>If on-hold exceeds 7 days, employee will be moved to Bench</p>
+                            </div>
+                        )}
 
                         <div className="flex justify-end gap-3 pt-4">
                             <Button
@@ -517,6 +685,7 @@ export function EmployeeFormDialog({
                                 type="button"
                                 className="bg-brand-600 hover:bg-brand-700 text-white gap-2"
                                 onClick={handleNext}
+                                data-testid="employee-next-button"
                             >
                                 Next
                                 <ArrowRight size={16} weight="bold" />
@@ -537,11 +706,41 @@ export function EmployeeFormDialog({
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Phone Number</label>
-                                <Input
-                                    placeholder="+91 9876543210"
-                                    value={extendedInfo.phoneNumber}
-                                    onChange={(e) => handleExtendedChange('phoneNumber', e.target.value)}
-                                />
+                                <div className="flex gap-2">
+                                    <Select
+                                        value={countryCode}
+                                        onValueChange={setCountryCode}
+                                    >
+                                        <SelectTrigger className="w-[100px]">
+                                            <SelectValue placeholder="Code" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="+91">+91 (IN)</SelectItem>
+                                            <SelectItem value="+1">+1 (US)</SelectItem>
+                                            <SelectItem value="+44">+44 (UK)</SelectItem>
+                                            <SelectItem value="+81">+81 (JP)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Input
+                                        placeholder="9876543210"
+                                        value={extendedInfo.phoneNumber}
+                                        onChange={(e) => {
+                                             // Allow only numbers
+                                             const val = e.target.value.replace(/\D/g, '');
+                                             
+                                             // Restrict length for India (+91)
+                                             if (countryCode === '+91' && val.length > 10) {
+                                                 return;
+                                             }
+                                             
+                                             handleExtendedChange('phoneNumber', val);
+                                        }}
+                                        className="flex-1"
+                                    />
+                                </div>
+                                {errors.phoneNumber && (
+                                    <p className="text-sm text-red-500">{errors.phoneNumber}</p>
+                                )}
                             </div>
                         </div>
 
@@ -664,6 +863,7 @@ export function EmployeeFormDialog({
                                     className="bg-brand-600 hover:bg-brand-700 text-white"
                                     onClick={handleSubmitWithExtended}
                                     disabled={isLoading}
+                                    data-testid="employee-submit-button"
                                 >
                                     {isLoading ? 'Saving...' : 'Submit'}
                                 </Button>

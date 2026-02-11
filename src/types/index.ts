@@ -7,7 +7,7 @@ export interface Entity {
 
 // Employment types
 export type EmploymentType = 'permanent' | 'retainer' | 'intern' | 'contractor';
-export type EmployeeStatus = 'active' | 'archived';
+export type EmployeeStatus = 'active' | 'archived' | 'on-hold';
 export type ProjectStatus = 'active' | 'completed' | 'on-hold' | 'proposal';
 export type SkillProficiency = 'beginner' | 'intermediate' | 'advanced' | 'expert';
 
@@ -26,6 +26,8 @@ export interface Account {
     contractValue?: number;
     startDate: string;
     description?: string;
+    website?: string;
+    domain?: string;
 }
 
 // Employee types
@@ -37,7 +39,6 @@ export interface Employee {
     employment_type: EmploymentType;
     status: EmployeeStatus;
     employee_code?: string;
-    performance_score: number | null;
     role?: string;
     specialization?: string;
     experience?: number;
@@ -49,6 +50,8 @@ export interface Employee {
     utilization_data?: Utilization[];
     certifications?: Certification[];
     utilization?: number;
+    primary_skills?: string;
+    secondary_skills?: string;
 }
 
 // Project types
@@ -110,7 +113,6 @@ export interface Certification {
     name: string;
     issuer: string | null;
     valid_until: string | null;
-    created_at: string;
 }
 
 // Utilization types (effort-based project utilization)

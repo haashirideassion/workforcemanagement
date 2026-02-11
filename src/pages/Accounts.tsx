@@ -7,6 +7,7 @@ import {
     DotsThree,
     Briefcase,
     User,
+    Globe,
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,24 +36,50 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAccounts } from '@/hooks/useAccounts';
+import { useAccounts, useCreateAccount, useUpdateAccount } from '@/hooks/useAccounts';
 import type { Account } from '@/types';
 import { AccountFormDialog } from '@/components/accounts/AccountFormDialog';
 
-// Status badge component
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// Status badge component with tooltip
 function getStatusBadge(status: Account['status']) {
-    switch (status) {
-        case 'healthy':
-            return <Badge variant="green">Healthy</Badge>;
-        case 'at-risk':
-            return <Badge variant="yellow">At Risk</Badge>;
-        case 'critical':
-            return <Badge variant="destructive">Critical</Badge>;
-        case 'on-hold':
-            return <Badge variant="outline">On Hold</Badge>;
-        default:
-            return <Badge variant="secondary">{status}</Badge>;
-    }
+    const getStatusInfo = (status: Account['status']) => {
+        switch (status) {
+            case 'healthy':
+                return { label: 'Healthy', variant: 'green' as const, description: 'All projects on track and utilization is optimal.' };
+            case 'at-risk':
+                return { label: 'At Risk', variant: 'yellow' as const, description: 'Potential resource gaps or upcoming project roll-offs.' };
+            case 'critical':
+                return { label: 'Critical', variant: 'destructive' as const, description: 'Immediate attention required due to severe resource gaps.' };
+            case 'on-hold':
+                return { label: 'On Hold', variant: 'outline' as const, description: 'Account activities currently paused by client.' };
+            default:
+                return { label: status, variant: 'secondary' as const, description: 'Current status details unavailable.' };
+        }
+    };
+
+    const info = getStatusInfo(status);
+
+    return (
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Badge variant={info.variant} className="cursor-help">
+                        {info.label}
+                    </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p className="max-w-xs text-xs">{info.description}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
 }
 
 
@@ -67,6 +94,8 @@ export function Accounts() {
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
     const { data: accounts = [], isLoading } = useAccounts();
+    const { mutate: createAccount } = useCreateAccount();
+    const { mutate: updateAccount } = useUpdateAccount();
 
     if (isLoading) {
         return <div className="p-8 text-center">Loading accounts...</div>;
@@ -84,11 +113,13 @@ export function Accounts() {
         return matchesSearch && matchesEntity && matchesStatus && matchesZone;
     });
 
+
+
     const handleFormSubmit = (data: Partial<Account>) => {
         if (editingAccount) {
-            console.log('Updating account:', { ...editingAccount, ...data });
+            updateAccount({ id: editingAccount.id, ...data });
         } else {
-            console.log('Adding account:', data);
+            createAccount(data as Omit<Account, 'id'>);
         }
         setFormOpen(false);
         setEditingAccount(null);
@@ -217,9 +248,23 @@ export function Accounts() {
                                     onClick={() => navigate(`/accounts/${account.id}`)}
                                 >
                                     <TableCell>
-                                        <div>
-                                            <p className="font-medium">{account.name}</p>
-                                            <p className="text-sm text-muted-foreground">{account.email}</p>
+                                        <div className="flex items-center gap-2">
+                                            <div>
+                                                <p className="font-medium">{account.name}</p>
+                                                {account.website && (
+                                                    <a
+                                                        href={account.website.startsWith('http') ? account.website : `https://${account.website}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-brand-600 hover:text-brand-700 hover:underline flex items-center gap-1 mt-0.5"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <Globe size={12} />
+                                                        {account.website.replace(/^https?:\/\//, '')}
+                                                    </a>
+                                                )}
+                                                <span className="text-sm text-muted-foreground block mt-0.5">{account.email}</span>
+                                            </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -264,7 +309,10 @@ export function Accounts() {
                                                 }}>
                                                     View Details
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenuItem onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate(`/projects?accountId=${account.id}`);
+                                                }}>
                                                     View Projects
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem

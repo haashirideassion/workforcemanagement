@@ -64,6 +64,7 @@ export function SkillFormDialog({
                         </label>
                         <Input
                             id="skill-name"
+                            data-testid="skill-name-input"
                             placeholder="e.g., React, Python, AWS"
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -79,6 +80,7 @@ export function SkillFormDialog({
                         </label>
                         <Input
                             id="skill-category"
+                            data-testid="skill-category-input"
                             placeholder="e.g., Frontend, Backend, Cloud"
                             value={form.category}
                             onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -97,6 +99,7 @@ export function SkillFormDialog({
                             type="submit"
                             className="bg-brand-600 hover:bg-brand-700 text-white"
                             disabled={isLoading}
+                            data-testid="skill-submit-button"
                         >
                             {isLoading ? 'Adding...' : 'Add Skill'}
                         </Button>

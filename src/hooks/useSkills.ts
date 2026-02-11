@@ -102,11 +102,17 @@ export function useAddEmployeeSkill() {
                 .insert(data);
 
             if (error) throw error;
+            return data;
         },
-        onSuccess: (_, variables) => {
+        onSuccess: (newData) => {
+            // Update the employee's skills list
+            queryClient.setQueryData(['skills', 'employee', newData.employee_id], (old: any) => {
+                if (!old) return [newData];
+                return [...old, newData];
+            });
+            // Update individual employee cache if needed
+            queryClient.invalidateQueries({ queryKey: ['employee', newData.employee_id] });
             queryClient.invalidateQueries({ queryKey: ['skills'] });
-            queryClient.invalidateQueries({ queryKey: ['skills', 'employee', variables.employee_id] });
-            queryClient.invalidateQueries({ queryKey: ['employee', variables.employee_id] });
         },
     });
 }
@@ -126,8 +132,16 @@ export function useCreateSkill() {
             if (error) throw error;
             return data;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['skills'] });
+        onSuccess: (newSkill) => {
+            queryClient.setQueryData(['skills'], (old: any) => {
+                const formattedSkill = {
+                    ...newSkill,
+                    employeeCount: 0,
+                    gap: true,
+                };
+                if (!old) return [formattedSkill];
+                return [...old, formattedSkill];
+            });
         },
     });
 }
