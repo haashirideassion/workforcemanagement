@@ -3,7 +3,6 @@ import { useState } from 'react';
 import {
     ArrowLeft,
     Users,
-    Warning,
     DotsThree,
     PencilSimple,
     Archive,
@@ -27,7 +26,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AccountFormDialog } from '@/components/accounts/AccountFormDialog';
-import type { Account, Project } from '@/types';
+import type { Account } from '@/types';
 import { useAccount, useUpdateAccount } from '@/hooks/useAccounts';
 import { useProjects } from '@/hooks/useProjects';
 
@@ -47,24 +46,6 @@ function getStatusBadge(status: string) {
     }
 }
 
-const getRisks = (projects: Project[]) => {
-    const risks = [];
-    const today = new Date();
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(today.getDate() + 30);
-
-    const endingSoon = projects.filter(p => p.end_date && new Date(p.end_date) <= thirtyDaysFromNow && new Date(p.end_date) >= today);
-    if (endingSoon.length > 0) {
-        risks.push({ id: 'r1', message: `${endingSoon.length} Project(s) ending within 30 days`, severity: 'medium' });
-    }
-
-    const lowUtilProjects = projects.filter(p => p.status === 'active' && (!p.utilization || p.utilization.length === 0));
-    if (lowUtilProjects.length > 0) {
-        risks.push({ id: 'r2', message: `${lowUtilProjects.length} Active project(s) have 0 resources allocated`, severity: 'high' });
-    }
-
-    return risks;
-};
 
 export function AccountDetail() {
     const { id } = useParams();
@@ -108,7 +89,6 @@ export function AccountDetail() {
         status: 'ok'
     }));
 
-    const risks = getRisks(projects);
 
     if (isLoading) return <div className="p-8 text-center bg-transparent">Loading account details...</div>;
     if (!account) return <div className="p-8 text-center text-red-500">Account not found</div>;
@@ -347,27 +327,6 @@ export function AccountDetail() {
                         </CardContent>
                     </Card>
 
-                    {/* Upcoming Risks & Alerts */}
-                    <Card className="border-yellow-500/20 bg-yellow-500/5">
-                        <CardHeader>
-                            <CardTitle className="text-lg text-yellow-600 flex items-center gap-2">
-                                <Warning size={18} /> Risks & Alerts
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {risks.map(risk => (
-                                    <div key={risk.id} className="flex gap-3 items-start text-sm bg-background/50 p-2 rounded border border-yellow-500/10">
-                                        <div className="mt-1 min-w-1.5 h-1.5 rounded-full bg-yellow-500" />
-                                        <span className="text-muted-foreground">{risk.message}</span>
-                                    </div>
-                                ))}
-                                {risks.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">No critical risks at the moment.</p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
 
