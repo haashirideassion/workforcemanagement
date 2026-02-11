@@ -255,13 +255,13 @@ export function UtilizationDialog({
                         <div className="flex items-center gap-2">
                             <Input
                                 id="utilization_percent"
-                                type="number"
-                                min="1"
-                                max="100"
+                                type="text"
+                                inputMode="numeric"
                                 value={form.utilization_percent}
                                 onChange={(e) => {
-                                    const valStr = e.target.value.replace(/^0+(?=\d)/, '');
-                                    handleFieldChange('utilization_percent', parseInt(valStr) || 0);
+                                    const val = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                                    const numVal = val === '' ? 0 : parseInt(val, 10);
+                                    handleFieldChange('utilization_percent', Math.min(100, numVal));
                                 }}
                             />
                             <span className="text-muted-foreground">%</span>

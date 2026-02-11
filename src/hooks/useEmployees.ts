@@ -244,20 +244,34 @@ export function useUpdateEmployeeAllocations() {
 
             // 2. Insert new allocations
             if (allocations.length > 0) {
-                const insertPayload = allocations.map(a => ({
-                    employee_id: employeeId,
-                    project_id: a.projectId,
-                    allocation_percent: a.utilization_percent,
-                    status: a.status,
-                    role: a.role,
-                    start_date: new Date().toISOString().split('T')[0], // Default to today
-                }));
+                const insertPayload = allocations
+                    .map(a => {
+                        const percent = parseInt(a.utilization_percent?.toString() || '0', 10);
+                        // Build payload with all valid allocation fields
+                        const payload: any = {
+                            employee_id: employeeId,
+                            project_id: a.project_id || a.projectId,
+                            allocation_percent: percent,
+                            start_date: a.start_date || new Date().toISOString().split('T')[0],
+                        };
+                        
+                        // Include optional fields if they exist
+                        if (a.status) payload.status = a.status;
+                        if (a.role) payload.role = a.role;
+                        if (a.end_date) payload.end_date = a.end_date;
+                        
+                        return payload;
+                    })
+                    // Filter out allocations with allocation_percent <= 0 (database constraint)
+                    .filter(a => a.allocation_percent > 0 && a.allocation_percent <= 100);
 
-                const { error: insertError } = await supabase
-                    .from('allocations')
-                    .insert(insertPayload);
-                
-                if (insertError) throw insertError;
+                if (insertPayload.length > 0) {
+                    const { error: insertError } = await supabase
+                        .from('allocations')
+                        .insert(insertPayload);
+                    
+                    if (insertError) throw insertError;
+                }
             }
 
             return { success: true };

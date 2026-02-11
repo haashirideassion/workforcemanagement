@@ -119,6 +119,10 @@ export function Employees() {
 
   // Handle Tab Change (Shortcuts)
   const handleTabChange = (value: string) => {
+    if (value === 'map') {
+      navigate('/utilization-board');
+      return;
+    }
     const config = getFilterConfig(value);
     setUtilizationRange(config.range);
     setStatusFilters(config.statuses);
@@ -311,6 +315,7 @@ export function Employees() {
               <TabsTrigger value="assigned" data-testid="tab-utilized">Utilized ({counts.assigned})</TabsTrigger>
               <TabsTrigger value="virtual_pool" data-testid="tab-virtual-pool">Virtual Pool ({counts.virtual_pool})</TabsTrigger>
               <TabsTrigger value="benched" data-testid="tab-benched">Benched ({counts.benched})</TabsTrigger>
+              <TabsTrigger value="map" data-testid="tab-map">Map</TabsTrigger>
             </TabsList>
           </Tabs>
           <Table>

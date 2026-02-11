@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, EnvelopeSimple, Buildings, Briefcase, Star, Certificate, Upload, Plus, X, File as FileIcon, Image as ImageIcon, Trash, Info, Phone, CalendarBlank, MapPin, User, PencilSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,6 +86,7 @@ interface ExtendedEmployeeInfo {
 export function EmployeeDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { data: employee, isLoading, error } = useEmployee(id || '');
     const { data: projects = [] } = useProjects();
     const updateAllocations = useUpdateEmployeeAllocations();
@@ -172,7 +174,7 @@ export function EmployeeDetail() {
             if (active.length > 0) {
                 setLocalUtilization(active.map(a => ({
                     ...a,
-                    status: 'Active', // Default status if missing
+                    status: a.status || 'Active', // Keep status from API, default to Active if missing
                     utilization_percent: a.utilization_percent
                 })) as any);
             } else {
@@ -316,9 +318,16 @@ export function EmployeeDetail() {
             if (field === 'utilization_percent') {
                 // Ensure value is handled as a number and strip leading zeros
                 const valStr = value.toString().replace(/^0+(?=\d)/, '');
-                const parsedValue = valStr === "" ? 0 : parseInt(valStr);
-                const finalValue = isNaN(parsedValue) ? 0 : Math.min(100, Math.max(0, parsedValue));
+                const numVal = valStr === "" ? 0 : parseInt(valStr, 10);
+                const finalValue = isNaN(numVal) ? 0 : Math.min(100, Math.max(0, numVal));
                 return { ...a, utilization_percent: finalValue };
+            }
+            if (field === 'status') {
+                // If status is not "Active", set utilization to 0
+                if (value !== 'Active') {
+                    return { ...a, [field]: value, utilization_percent: 0 };
+                }
+                return { ...a, [field]: value };
             }
             return { ...a, [field]: value };
         }));
@@ -331,18 +340,36 @@ export function EmployeeDetail() {
     const handleSaveUtilization = async () => {
         if (!id) return;
         
+        // Filter out empty allocations (with 0%)
+        const validAllocations = localUtilization
+            .filter(a => Number(a.utilization_percent) > 0)
+            .map(a => {
+                // Include all fields from the allocation
+                return {
+                    ...a,
+                    status: a.status || 'Active'
+                };
+            });
+        
         // Basic validation: Total utilization shouldn't exceed 100%
-        const total = localUtilization.reduce((sum, a) => sum + (Number(a.utilization_percent) || 0), 0);
+        const total = validAllocations.reduce((sum, a) => sum + (Number(a.utilization_percent) || 0), 0);
         if (total > 100) {
             toast.error("Total utilization cannot exceed 100%");
             return;
         }
 
+        if (validAllocations.length === 0 && localUtilization.length > 0) {
+            toast.error("Please set allocation percentage > 0% for at least one project");
+            return;
+        }
+
         updateAllocations.mutate(
-            { employeeId: id, allocations: localUtilization },
+            { employeeId: id, allocations: validAllocations },
             {
                 onSuccess: () => {
                     toast.success("Utilization updated successfully");
+                    // Refetch employee data to show updated status
+                    queryClient.invalidateQueries({ queryKey: ['employee', id] });
                     setIsManageUtilizationOpen(false);
                 },
                 onError: (error: any) => {
@@ -511,8 +538,8 @@ export function EmployeeDetail() {
                                                     <TableCell>{alloc.start_date}</TableCell>
                                                     <TableCell>{alloc.end_date}</TableCell>
                                                     <TableCell>
-                                                        <Badge variant={isActive ? 'default' : 'secondary'}>
-                                                            {isActive ? 'Active' : 'Ended'}
+                                                        <Badge variant={alloc.status === 'Active' || alloc.status === 'Planned' ? 'default' : 'secondary'}>
+                                                            {alloc.status || (isActive ? 'Active' : 'Ended')}
                                                         </Badge>
                                                     </TableCell>
                                                 </TableRow>
@@ -852,21 +879,20 @@ export function EmployeeDetail() {
                                                     <TableCell>
                                                         <div className="relative">
                                                             <Input
-                                                                type="number"
-                                                                min={0}
-                                                                max={100}
+                                                                type="text"
+                                                                inputMode="numeric"
                                                                 value={alloc.utilization_percent}
                                                                 onChange={(e) => {
-                                                                    const val = e.target.value;
+                                                                    const val = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
                                                                     if (val === '') {
-                                                                        handleUpdateUtilization(alloc.id, 'utilization_percent', '');
+                                                                        handleUpdateUtilization(alloc.id, 'utilization_percent', 0);
                                                                         return;
                                                                     }
-                                                                    let numVal = parseInt(val);
-                                                                    if (numVal < 0) numVal = 0;
-                                                                    if (numVal > 100) numVal = 100;
-                                                                    handleUpdateUtilization(alloc.id, 'utilization_percent', numVal);
+                                                                    const numVal = parseInt(val, 10);
+                                                                    const finalValue = Math.min(100, numVal);
+                                                                    handleUpdateUtilization(alloc.id, 'utilization_percent', finalValue);
                                                                 }}
+                                                                disabled={alloc.status !== 'Active'}
                                                                 className="pr-6"
                                                             />
                                                             <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">%</span>

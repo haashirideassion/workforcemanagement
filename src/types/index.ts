@@ -78,9 +78,11 @@ export interface Utilization {
     employee_id: string;
     project_id: string;
     utilization_percent: number;
+    allocation_percent?: number;
     start_date: string;
     end_date: string | null;
     role?: string;
+    status?: string;
     type?: 'Billable' | 'Shared' | 'Shadow' | 'Training' | 'Non-Billable';
     created_at: string;
     // Computed fields

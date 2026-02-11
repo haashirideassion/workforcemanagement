@@ -338,14 +338,15 @@ export function EmployeeFormDialog({
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Experience (Years)</label>
                                 <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.5"
+                                    type="text"
+                                    inputMode="decimal"
                                     placeholder="e.g. 5"
                                     value={form.experience || ''}
                                     onChange={(e) => {
-                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
-                                        handleFieldChange('experience', parseFloat(valStr) || 0);
+                                        const val = e.target.value.replace(/[^0-9.]/g, '').replace(/^0+(?=\d)/, '');
+                                        // Prevents multiple dots
+                                        if ((val.match(/\./g) || []).length > 1) return;
+                                        handleFieldChange('experience', val);
                                     }}
                                     disabled={isEditing && form.status !== 'active'}
                                 />
@@ -437,13 +438,13 @@ export function EmployeeFormDialog({
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Utilization (%)</label>
                                 <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
+                                    type="text"
+                                    inputMode="numeric"
                                     value={form.utilization}
                                     onChange={(e) => {
-                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
-                                        handleFieldChange('utilization', parseInt(valStr) || 0);
+                                        const val = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                                        const numVal = val === '' ? 0 : parseInt(val, 10);
+                                        handleFieldChange('utilization', Math.min(100, numVal));
                                     }}
                                     disabled={form.status !== 'active'}
                                 />
@@ -559,14 +560,14 @@ export function EmployeeFormDialog({
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Experience (Years)</label>
                                 <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.5"
+                                    type="text"
+                                    inputMode="decimal"
                                     placeholder="e.g. 5"
                                     value={form.experience || ''}
                                     onChange={(e) => {
-                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
-                                        handleFieldChange('experience', parseFloat(valStr) || 0);
+                                        const val = e.target.value.replace(/[^0-9.]/g, '').replace(/^0+(?=\d)/, '');
+                                        if ((val.match(/\./g) || []).length > 1) return;
+                                        handleFieldChange('experience', val);
                                     }}
                                 />
                             </div>
@@ -653,13 +654,13 @@ export function EmployeeFormDialog({
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Utilization (%)</label>
                                 <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
+                                    type="text"
+                                    inputMode="numeric"
                                     value={form.utilization}
                                     onChange={(e) => {
-                                        const valStr = e.target.value.replace(/^0+(?=\d)/, '');
-                                        handleFieldChange('utilization', parseInt(valStr) || 0);
+                                        const val = e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+                                        const numVal = val === '' ? 0 : parseInt(val, 10);
+                                        handleFieldChange('utilization', Math.min(100, numVal));
                                     }}
                                     disabled={form.status !== 'active'}
                                 />

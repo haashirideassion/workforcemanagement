@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { ArrowUp, ArrowDown } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
@@ -29,19 +29,11 @@ export function TrendCard({
     title,
     value,
     subValue,
-    icon,
-    iconBgColor = 'bg-primary/10',
     trend,
-    history,
     onDetailClick,
     className
 }: TrendCardProps) {
     const isTrendingUp = trend.direction === 'up';
-    // Determine trend color based on isPositive
-    // If isPositive is true, we want green. If false, we want red. 
-    // Usually "Positive" means "Good".
-    const trendColor = trend.isPositive ? 'text-green-600' : 'text-red-600';
-    const trendIcon = isTrendingUp ? <ArrowUp weight="bold" /> : <ArrowDown weight="bold" />;
 
     return (
         <Card
@@ -49,53 +41,60 @@ export function TrendCard({
             onClick={onDetailClick}
             data-testid={`card-${title.toLowerCase().replace(/\s+/g, '-')}`}
         >
-            <CardHeader className="flex flex-row items-center justify-between pb-0 pt-0 px-3 space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {title}
-                </CardTitle>
-                <div className={cn("p-1.5 rounded-full", iconBgColor)}>
-                    {icon}
+            <CardHeader className="pb-3 pt-4 px-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            {title}
+                        </CardTitle>
+                        <div className="flex flex-col gap-1">
+                            <div className="text-3xl font-bold tracking-tight">
+                                {value}
+                            </div>
+                            {subValue && <span className="text-sm font-normal text-muted-foreground">{subValue}</span>}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs mt-1">
+                            <span className={cn("flex items-center gap-0.5 font-medium", trend.isPositive ? 'text-green-600' : 'text-red-600')}>
+                                {isTrendingUp ? <ArrowUp weight="bold" /> : <ArrowDown weight="bold" />}
+                                {Math.abs(trend.value)}%
+                            </span>
+                            <span className="text-muted-foreground">
+                                {trend.label || 'vs last month'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    {/* Circular Progress Chart */}
+                    <div className="w-24 h-24 flex items-center justify-center">
+                        <ResponsiveContainer width={96} height={96}>
+                            <PieChart>
+                                <Pie
+                                    data={[
+                                        { name: 'value', value: Math.min(100, Math.max(0, parseInt(String(value)) || 0)) },
+                                        { name: 'empty', value: Math.max(0, 100 - Math.min(100, Math.max(0, parseInt(String(value)) || 0))) }
+                                    ]}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={35}
+                                    outerRadius={48}
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    dataKey="value"
+                                    strokeWidth={0}
+                                >
+                                    <Cell fill={trend.isPositive ? "#10b981" : "#ef4444"} />
+                                    <Cell fill="#e5e7eb" />
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute flex flex-col items-center justify-center">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                {Math.min(100, Math.max(0, parseInt(String(value)) || 0))}%
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </CardHeader>
-            <CardContent className="pb-1 pt-0 px-3">
-                <div className="flex flex-col gap-0">
-                    <div className="text-6xl font-bold tracking-tight">
-                        {value}
-                        {subValue && <span className="text-lg font-normal text-muted-foreground ml-2">{subValue}</span>}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs mt-0">
-                        <span className={cn("flex items-center gap-0.5 font-medium", trendColor)}>
-                            {trendIcon}
-                            {Math.abs(trend.value)}%
-                        </span>
-                        <span className="text-muted-foreground">
-                            {trend.label || 'vs last month'}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Sparkline Area */}
-                <div className="h-[50px] w-full mt-1 -mx-2 mb-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={history}>
-                            <defs>
-                                <linearGradient id={`gradient-${title}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={trend.isPositive ? "#16a34a" : "#dc2626"} stopOpacity={0.1}/>
-                                    <stop offset="95%" stopColor={trend.isPositive ? "#16a34a" : "#dc2626"} stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <Area
-                                type="monotone"
-                                dataKey="value"
-                                stroke={trend.isPositive ? "#16a34a" : "#dc2626"} // green-600 or red-600
-                                fill={`url(#gradient-${title})`}
-                                strokeWidth={2}
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </CardContent>
         </Card>
     );
 }

@@ -57,12 +57,18 @@ export function useCreateUtilization() {
     return useMutation({
         mutationFn: async (utilization: Omit<Utilization, 'id' | 'created_at'>) => {
             // Map utilization_percent back to allocation_percent for DB
-            const dbPayload = {
+            const dbPayload: any = {
                 ...utilization,
                 allocation_percent: utilization.utilization_percent
             };
             // remove utilization_percent if it exists in payload
-            if ('utilization_percent' in dbPayload) delete (dbPayload as any).utilization_percent;
+            if ('utilization_percent' in dbPayload) delete dbPayload.utilization_percent;
+            
+            // Remove computed/UI-only fields that shouldn't be stored
+            delete dbPayload.employee;
+            delete dbPayload.project;
+            delete dbPayload.type;
+            delete dbPayload.utilization_percent;
 
             const { data, error } = await supabase
                 .from('allocations')
@@ -88,11 +94,25 @@ export function useUpdateUtilization() {
 
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<Utilization> & { id: string }) => {
-            const dbUpdates: any = { ...updates };
+            const dbUpdates: any = {};
+            
+            // Map utilization_percent to allocation_percent for DB
             if (updates.utilization_percent !== undefined) {
                 dbUpdates.allocation_percent = updates.utilization_percent;
-                delete dbUpdates.utilization_percent;
             }
+            
+            // Allow status and role to be updated
+            if (updates.status !== undefined) {
+                dbUpdates.status = updates.status;
+            }
+            if (updates.role !== undefined) {
+                dbUpdates.role = updates.role;
+            }
+            
+            // Remove computed/UI-only fields
+            delete dbUpdates.type;
+            delete dbUpdates.employee;
+            delete dbUpdates.project;
 
             const { data, error } = await supabase
                 .from('allocations')
@@ -102,14 +122,20 @@ export function useUpdateUtilization() {
                 .single();
 
             if (error) throw error;
-            return data;
+            
+            // Handle 204 No Content - return the ID so we know the update succeeded
+            return data || { id };
         },
         onSuccess: (updatedData) => {
             queryClient.invalidateQueries({ queryKey: ['utilization'] });
             queryClient.invalidateQueries({ queryKey: ['employees'] });
             queryClient.invalidateQueries({ queryKey: ['projects'] });
-            queryClient.invalidateQueries({ queryKey: ['project', updatedData.project_id] });
-            queryClient.invalidateQueries({ queryKey: ['employee', updatedData.employee_id] });
+            if (updatedData?.project_id) {
+                queryClient.invalidateQueries({ queryKey: ['project', updatedData.project_id] });
+            }
+            if (updatedData?.employee_id) {
+                queryClient.invalidateQueries({ queryKey: ['employee', updatedData.employee_id] });
+            }
         },
     });
 }

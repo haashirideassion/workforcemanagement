@@ -48,6 +48,7 @@ const navItems = [
     { to: '/accounts', label: 'Accounts', icon: Buildings },
     { to: '/projects', label: 'Projects', icon: Briefcase },
     { to: '/utilization', label: 'Utilization', icon: ChartBar },
+    { to: '/utilization-board', label: 'Talent Map', icon: List },
     { to: '/skills', label: 'Skills', icon: Certificate },
     { to: '/optimization', label: 'Optimization', icon: TrendUp },
 ];
@@ -100,7 +101,7 @@ function AppLayoutContent() {
                             <SidebarMenuButton size="lg" asChild tooltip={isCollapsed ? "Ideassion" : undefined}>
                                 <a href="#">
                                     <img
-                                        src="/src/assets/itslogo.png"
+                                        src="/itslogo.png"
                                         alt="Ideassion Logo"
                                         className="size-8 rounded-lg object-contain"
                                     />
