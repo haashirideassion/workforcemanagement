@@ -2,34 +2,36 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const routeTitles: Record<string, string> = {
-    '/': 'Dashboard | Workforce Management',
-    '/employees': 'Employees | Workforce Management',
-    '/teams': 'Teams | Workforce Management',
-    '/allocations': 'Project Allocations | Workforce Management',
-    '/skills': 'Skills Directory | Workforce Management',
-    '/optimization': 'Optimization | Workforce Management',
-    '/allocation-board': 'Allocation Board | Workforce Management',
+    '/': 'Overview · IWS Workforce',
+    '/employees': 'People Directory · IWS Workforce',
+    '/accounts': 'Client Accounts · IWS Workforce',
+    '/projects': 'Project Portfolio · IWS Workforce',
+    '/utilization': 'Utilization Analytics · IWS Workforce',
+    '/utilization-board': 'Talent Map · IWS Workforce',
+    '/skills': 'Skills Matrix · IWS Workforce',
+    '/optimization': 'Resource Optimization · IWS Workforce',
+    '/bench': 'Bench Pool · IWS Workforce',
 };
 
 export function usePageTitle() {
     const location = useLocation();
 
     useEffect(() => {
-        // Handle dynamic routes like /employees/:id
+        // Handle dynamic routes
         if (location.pathname.startsWith('/employees/')) {
-            document.title = 'Employee Details | Workforce Management';
+            document.title = 'Employee Profile · IWS Workforce';
             return;
         }
-        if (location.pathname.startsWith('/teams/')) {
-            document.title = 'Team Details | Workforce Management';
+        if (location.pathname.startsWith('/accounts/')) {
+            document.title = 'Account Details · IWS Workforce';
             return;
         }
         if (location.pathname.startsWith('/projects/')) {
-            document.title = 'Project Details | Workforce Management';
+            document.title = 'Project Details · IWS Workforce';
             return;
         }
 
-        const title = routeTitles[location.pathname] || 'Workforce Management System';
+        const title = routeTitles[location.pathname] || 'IWS Workforce';
         document.title = title;
     }, [location]);
 }

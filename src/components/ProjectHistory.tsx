@@ -103,12 +103,17 @@ export function ProjectHistory({ transitions }: ProjectHistoryProps) {
                                                 {transition.project?.name || 'Unknown Project'}
                                             </h4>
                                             <p className="text-sm text-muted-foreground mt-1">
-                                                {new Date(transition.start_date).toLocaleDateString()} 
+                                                {new Date(transition.start_date).toLocaleDateString()}
                                                 {transition.end_date ? ` - ${new Date(transition.end_date).toLocaleDateString()}` : ' - Present'}
                                             </p>
                                             {transition.duration_days && (
                                                 <p className="text-xs text-muted-foreground mt-1">
                                                     Duration: {transition.duration_days} days
+                                                </p>
+                                            )}
+                                            {transition.manager_name && (
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Manager: <span className="font-medium text-foreground">{transition.manager_name}</span>
                                                 </p>
                                             )}
                                         </div>

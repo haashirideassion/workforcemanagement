@@ -169,12 +169,24 @@ export function Employees() {
 
   if (isLoading) return <Loading fullPage />;
 
-  const EMPLOYEE_INFO_KEY = 'employee_extended_info';
-
   const handleFormSubmit = (values: EmployeeFormData, extendedInfo?: ExtendedEmployeeInfo) => {
+    // Build extended fields to include in the DB payload
+    const extendedFields: Record<string, any> = {};
+    if (extendedInfo) {
+      if (extendedInfo.phoneNumber) extendedFields.phone_number = extendedInfo.phoneNumber;
+      if (extendedInfo.designation) extendedFields.designation = extendedInfo.designation;
+      if (extendedInfo.dateOfJoining) extendedFields.date_of_joining = extendedInfo.dateOfJoining;
+      if (extendedInfo.personalEmail) extendedFields.personal_email = extendedInfo.personalEmail;
+      // Store complex data in metadata JSONB
+      const metadata: Record<string, any> = {};
+      if (extendedInfo.pastExperience) metadata.pastExperience = extendedInfo.pastExperience;
+      if (extendedInfo.pastCompanies?.length > 0) metadata.pastCompanies = extendedInfo.pastCompanies;
+      if (Object.keys(metadata).length > 0) extendedFields.metadata = metadata;
+    }
+
     if (editingEmployee) {
       updateEmployee.mutate(
-        { id: editingEmployee.id, ...values } as Partial<Employee> & { id: string },
+        { id: editingEmployee.id, ...values, ...extendedFields } as Partial<Employee> & { id: string },
         {
           onSuccess: () => {
             setFormOpen(false);
@@ -188,23 +200,9 @@ export function Employees() {
       );
     } else {
       createEmployee.mutate(
-        { ...values, status: values.status || "active" } as any,
+        { ...values, ...extendedFields, status: values.status || "active" } as any,
         {
-          onSuccess: (newEmployee) => {
-            // Save extended info to localStorage if provided
-            if (extendedInfo && newEmployee?.id) {
-              const hasExtendedData = extendedInfo.phoneNumber ||
-                extendedInfo.dateOfJoining ||
-                extendedInfo.pastExperience ||
-                extendedInfo.designation ||
-                extendedInfo.pastCompanies?.length > 0;
-              if (hasExtendedData) {
-                localStorage.setItem(
-                  `${EMPLOYEE_INFO_KEY}_${newEmployee.id}`,
-                  JSON.stringify(extendedInfo)
-                );
-              }
-            }
+          onSuccess: () => {
             setFormOpen(false);
             toast.success("Employee added successfully");
           },

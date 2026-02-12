@@ -66,8 +66,6 @@ interface CertificationFormData {
 
 
 
-const EMPLOYEE_INFO_KEY = 'employee_extended_info';
-
 interface PastCompany {
     name: string;
     role: string;
@@ -147,38 +145,23 @@ export function EmployeeDetail() {
     const [localUtilization, setLocalUtilization] = useState<LocalUtilization[]>([]);
     const [isManageUtilizationOpen, setIsManageUtilizationOpen] = useState(false);
 
-    // Load data from localStorage on mount (restored but without localCertifications)
+    // Load extended info from employee DB record
     useEffect(() => {
-        if (id) {
-            // Load extended employee info
-            const storedInfo = localStorage.getItem(`${EMPLOYEE_INFO_KEY}_${id}`);
-            if (storedInfo) {
-                try {
-                    setExtendedInfo({ ...defaultEmployeeInfo, ...JSON.parse(storedInfo) });
-                } catch (e) {
-                    console.error('Failed to parse stored employee info:', e);
-                }
-            } else if (employee && employee.name.toLowerCase().includes('adeeb')) {
-                // Demo data for Adeeb
-                const demoData: ExtendedEmployeeInfo = {
-                    dateOfJoining: '2023-01-15',
-                    pastExperience: '5 years',
-                    phoneNumber: '+1 (555) 123-4567',
-                    personalEmail: 'adeeb@example.com',
-                    designation: 'Senior Software Engineer',
-                    currentRole: 'Tech Lead',
-                    currentProject: 'Workforce Management System',
-                    pastCompanies: [
-                        { name: 'Tech Corp', role: 'Software Engineer', duration: '2020-2023' },
-                        { name: 'Startup Inc', role: 'Junior Dev', duration: '2018-2020' }
-                    ]
-                };
-                setExtendedInfo(demoData);
-                localStorage.setItem(`${EMPLOYEE_INFO_KEY}_${id}`, JSON.stringify(demoData));
-            }
+        if (employee) {
+            const metadata = (employee as any).metadata || {};
+            setExtendedInfo({
+                ...defaultEmployeeInfo,
+                dateOfJoining: (employee as any).date_of_joining || '',
+                phoneNumber: (employee as any).phone_number || '',
+                personalEmail: (employee as any).personal_email || '',
+                designation: (employee as any).designation || '',
+                currentRole: employee.role || '',
+                pastExperience: metadata.pastExperience || '',
+                pastCompanies: metadata.pastCompanies || [],
+                currentProject: metadata.currentProject || '',
+            });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id, employee]);
+    }, [employee]);
 
     // Initialize localUtilization from employee data
     useEffect(() => {
@@ -478,7 +461,7 @@ export function EmployeeDetail() {
 
             {/* Tabs - 4 Priority Sections */}
             <Tabs defaultValue="utilization">
-                <TabsList className="grid w-full grid-cols-5">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="utilization">
                         <Briefcase size={16} className="mr-2" />
                         Utilization
@@ -883,18 +866,18 @@ export function EmployeeDetail() {
                                     <TableBody>
                                         {localUtilization.length > 0 ? (
                                             localUtilization.map((alloc) => {
-                                                const isOriginallyNotActive = ['Planned', 'On Hold', 'Ended'].includes(alloc.originalStatus || 'Active');
-                                                const isRowDisabled = !alloc.id.startsWith('new-') && isOriginallyNotActive;
-                                                
+                                                const isNotActive = alloc.status !== 'Active';
+                                                const isEmployeeInactive = employee.status !== 'active';
+
                                                 return (
                                                     <TableRow key={alloc.id}>
                                                         <TableCell>
                                                             <Select
-                                                                value={(alloc as any).project?.id || ''} 
+                                                                value={(alloc as any).project?.id || ''}
                                                                 onValueChange={(val) => handleUpdateUtilization(alloc.id, 'projectId', val)}
-                                                                disabled={employee.status !== 'active' || isRowDisabled}
+                                                                disabled={isEmployeeInactive}
                                                             >
-                                                                <SelectTrigger className="h-9 w-full" disabled={employee.status !== 'active' || isRowDisabled}>
+                                                                <SelectTrigger className="h-9 w-full" disabled={isEmployeeInactive}>
                                                                 <SelectValue placeholder="Select Project" />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -910,9 +893,9 @@ export function EmployeeDetail() {
                                                         <Select
                                                             value={alloc.status}
                                                             onValueChange={(val) => handleUpdateUtilization(alloc.id, 'status', val)}
-                                                            disabled={employee.status !== 'active'}
+                                                            disabled={isEmployeeInactive}
                                                         >
-                                                            <SelectTrigger className="h-9" disabled={employee.status !== 'active'}>
+                                                            <SelectTrigger className="h-9" disabled={isEmployeeInactive}>
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
@@ -939,19 +922,19 @@ export function EmployeeDetail() {
                                                                     const finalValue = Math.min(100, numVal);
                                                                     handleUpdateUtilization(alloc.id, 'utilization_percent', finalValue);
                                                                 }}
-                                                                disabled={employee.status !== 'active' || isRowDisabled}
+                                                                disabled={isEmployeeInactive || isNotActive}
                                                                 className="pr-6"
                                                             />
                                                             <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">%</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
-                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10" 
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                                             onClick={() => handleRemoveUtilization(alloc.id)}
-                                                            disabled={employee.status !== 'active' || isRowDisabled}
+                                                            disabled={isEmployeeInactive}
                                                         >
                                                             <Trash size={16} />
                                                         </Button>
@@ -1146,13 +1129,6 @@ export function EmployeeDetail() {
                                 </div>
                             )}
 
-                            {/* Empty state message for localStorage data */}
-                            {/* {!extendedInfo.phoneNumber && !extendedInfo.dateOfJoining && !extendedInfo.pastExperience && (
-                                <div className="text-center py-4 text-muted-foreground text-sm">
-                                    <p>Extended profile information can be added by editing localStorage</p>
-                                    <p className="text-xs mt-1">Key: {EMPLOYEE_INFO_KEY}_{id}</p>
-                                </div>
-                            )} */}
                         </div>
 
                         <DialogFooter>

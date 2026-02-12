@@ -42,17 +42,30 @@ export interface Employee {
     role?: string;
     specialization?: string;
     experience?: number;
+    phone_number?: string;
+    designation?: string;
+    date_of_joining?: string;
+    personal_email?: string;
+    metadata?: EmployeeMetadata;
     created_at: string;
     updated_at: string;
     // Computed fields
     entity?: Entity;
     skills?: EmployeeSkill[];
+    employee_skills?: EmployeeSkill[];
     utilization_data?: Utilization[];
     certifications?: Certification[];
     utilization?: number;
     bench_status?: string; // 'healthy' | 'review-required' | 'at-risk' | 'layoff-consideration'
     primary_skills?: string;
     secondary_skills?: string;
+}
+
+// Extended employee metadata stored as JSONB
+export interface EmployeeMetadata {
+    pastExperience?: string;
+    pastCompanies?: { name: string; role: string; duration: string }[];
+    currentProject?: string;
 }
 
 // Project types
@@ -128,6 +141,7 @@ export interface ProjectTransition {
     end_date?: string;
     duration_days?: number;
     remarks?: string;
+    manager_name?: string;
     status: 'active' | 'completed';
     created_at: string;
     updated_at: string;

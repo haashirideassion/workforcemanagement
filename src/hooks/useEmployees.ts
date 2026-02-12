@@ -172,13 +172,15 @@ export function useCreateEmployee() {
     return useMutation({
         mutationFn: async (employee: Omit<Employee, 'id' | 'created_at' | 'updated_at'>) => {
             try {
-                // Sanitize input: remove derived fields
+                // Sanitize input: remove derived/computed fields
                 const {
                     utilization,
                     utilization_data,
                     entity,
                     employee_skills,
                     certifications,
+                    skills,
+                    bench_status,
                     ...dbPayload
                 } = employee as any;
 
@@ -214,13 +216,15 @@ export function useUpdateEmployee() {
     return useMutation({
         mutationFn: async ({ id, ...updates }: Partial<Employee> & { id: string }) => {
             try {
-                // Sanitize input: remove derived fields
+                // Sanitize input: remove derived/computed fields
                 const {
                     utilization,
                     utilization_data,
                     entity,
                     employee_skills,
                     certifications,
+                    skills,
+                    bench_status,
                     created_at,
                     updated_at,
                     ...dbPayload

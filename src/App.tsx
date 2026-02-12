@@ -52,10 +52,10 @@ function App() {
                   <Route path="/projects/:id" element={<ProjectDetail />} />
                   <Route path="/accounts" element={<Accounts />} />
                   <Route path="/accounts/:id" element={<AccountDetail />} />
-                  <Route path="utilization" element={<Utilization />} />
-                  <Route path="skills" element={<Skills />} />
-                  <Route path="optimization" element={<Optimization />} />
-                  <Route path="utilization-board" element={<UtilizationBoard />} />
+                  <Route path="/utilization" element={<Utilization />} />
+                  <Route path="/skills" element={<Skills />} />
+                  <Route path="/optimization" element={<Optimization />} />
+                  <Route path="/utilization-board" element={<UtilizationBoard />} />
                 </Route>
               </Routes>
             </BrowserRouter>

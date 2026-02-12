@@ -9,35 +9,25 @@ const transformAccount = (data: any): Account => {
     const projects = data.projects || [];
     const activeProjects = projects.filter((p: any) => p.status === 'active').length;
     
-    // Calculate utilization and utilized resources
-    // This is valid if we fetch projects -> allocations
-    let utilizedCount = 0;
-    let totalUtilization = 0;
-    // utilizationCount removed as it was unused
-    // The mock data had "utilization" as a single number (Avg? Total?). 
-    // Usually it's resource utilization.
-    // Let's approximate based on allocations. 
-    
+    // Calculate utilization and utilized resources from allocations
     const allocations = projects.flatMap((p: any) => p.allocations || []);
-    const uniqueEmployees = new Set(allocations.map((a: any) => a.employee_id)).size;
-    utilizedCount = uniqueEmployees;
+    const utilizedCount = new Set(allocations.map((a: any) => a.employee_id)).size;
 
-    // Average utilization of the account's projects?
-    // Or average utilization of allocated resources?
-    // Let's use average of allocations for now.
+    // Average allocation percentage across all active allocations
+    let totalUtilization = 0;
     if (allocations.length > 0) {
         const sumUtils = allocations.reduce((sum: number, a: any) => sum + (a.allocation_percent || 0), 0);
-        totalUtilization = Math.round(sumUtils / allocations.length); // Average utilization per allocation
+        totalUtilization = Math.round(sumUtils / allocations.length);
     }
 
     return {
         id: data.id,
         name: data.name,
         email: data.email || '',
-        entity: data.entity?.name as 'ITS' | 'IBCC' | 'IITT', // Assuming valid names in DB
+        entity: data.entity?.name as 'ITS' | 'IBCC' | 'IITT',
         activeProjects,
         utilizedResources: utilizedCount,
-        utilization: totalUtilization, // Placeholder logic
+        utilization: totalUtilization,
         billingType: data.billing_type as 'T&M' | 'Fixed' | 'Retainer',
         status: data.status as 'healthy' | 'at-risk' | 'critical' | 'on-hold',
         zone: data.zone as 'USA' | 'Asia' | 'EMEA' | 'LatAm' | 'APAC' | 'Europe',

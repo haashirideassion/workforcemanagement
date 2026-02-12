@@ -131,19 +131,11 @@ export function useDashboardKPIs() {
             // Projects Trend
             const projTrend = getTrend(currentMetrics.activeProjects, prev1Metrics.activeProjects);
 
-            // Account Metrics
-            // Simplified: Headcount change is just random/mock for now as tracking account specific history is complex
-            // We can calculate total resources per account roughly
+            // Account Metrics - count current resources per account
             const accountMetrics: AccountMetric[] = accounts.map((acc: any) => {
-                // Count current resources on this account's projects
-                // This requires joining. Since we didn't fetch deep structure, let's just use what we have?
-                // We need `projects` for this account, then `allocations`.
-                // simpler: filter `projects` array by account_id
-                // We didn't fetch account_id in projectsRes. Let's fix that next time or assume we can join via accounts->projects
-                // accountsRes has projects(id)
                 const accProjectIds = new Set(acc.projects?.map((p: any) => p.id));
                 const currentResources = new Set(allocations
-                    .filter((a: any) => accProjectIds.has(a.project_id) && 
+                    .filter((a: any) => accProjectIds.has(a.project_id) &&
                         (!a.end_date || a.end_date >= today.toISOString().split('T')[0]))
                     .map((a: any) => a.employee_id)
                 ).size;
@@ -151,7 +143,7 @@ export function useDashboardKPIs() {
                 return {
                     id: acc.id,
                     name: acc.name,
-                    headcountChange: 0, // Placeholder
+                    headcountChange: 0,
                     totalCount: currentResources
                 };
             });
@@ -274,28 +266,6 @@ export function useUpcomingReleases() {
                 skill: a.employee?.primary_skills || 'N/A',
                 endDate: a.end_date
             }));
-
-            // Use sample data if empty to show functionality
-            if (releases.length === 0) {
-                return [
-                    {
-                        employee: "Michael Chen",
-                        employeeId: "sample-1",
-                        project: "Cloud Migration",
-                        account: "Global Tech",
-                        skill: "AWS, Kubernetes",
-                        endDate: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                    },
-                    {
-                        employee: "Sarah Williams",
-                        employeeId: "sample-2",
-                        project: "Mobile App Refactor",
-                        account: "EcoStream",
-                        skill: "React Native, TypeScript",
-                        endDate: new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                    }
-                ];
-            }
 
             return releases;
         },
